@@ -1,21 +1,28 @@
-# Next.js template
+# Predicta UI
 
-This is a Next.js template with shadcn/ui.
+Dashboard UI for Antananarivo traffic congestion. Built with Next.js 16, React 19, shadcn/ui, Tailwind CSS v4.
 
-## Adding components
+**API:** `https://predicta-api.railway.app/` (see `docs/openapi.yml`)
 
-To add components to your app, run the following command:
+## Dev
 
 ```bash
-npx shadcn@latest add button
+pnpm dev        # http://localhost:3000
+pnpm lint       # ESLint
+pnpm typecheck  # tsc --noEmit
+pnpm format     # Prettier
+pnpm build      # Production build
 ```
 
-This will place the ui components in the `components` directory.
+## Stack
 
-## Using components
+- Next.js 16 (App Router, Turbopack)
+- React 19, TypeScript 5.9
+- Tailwind CSS v4, shadcn/ui (radix-nova)
+- next-themes (press `d` for dark mode)
+- pnpm only
 
-To use the components in your app, import them as follows:
+## Repos
 
-```tsx
-import { Button } from "@/components/ui/button";
-```
+- **predicta-api** (`~/yuta_corp/predicta-api`) — backend
+- **scrap** (`~/scrap`) — data analysis
