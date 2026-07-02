@@ -7,8 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params
-  const head = path[0]
-  if (!head || !ALLOWED.has(head)) {
+  if (path.length !== 1 || !ALLOWED.has(path[0])) {
     return Response.json({ error: "not found" }, { status: 404 })
   }
 
