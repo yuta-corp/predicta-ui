@@ -118,18 +118,7 @@ export default function TrafficMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // swap basemap on theme change (keeps traffic source: re-add on styledata)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    const style = theme === "light" ? LIGHT_STYLE : DARK_STYLE
-    map.setStyle(style, { diff: false })
-    map.once("styledata", () => {
-      if (map.getSource("traffic")) return
-      // style reset wiped layers; nothing to do here — handled by re-init guard
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme])
+  // theme swap = full remount via key in page.tsx (clean basemap + layers), no in-place setStyle.
 
   return (
     <div className="relative h-dvh w-full">

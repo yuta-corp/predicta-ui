@@ -24,12 +24,16 @@ export default function QuartierSearch({
   useEffect(() => {
     const controller = new AbortController()
     const id = setTimeout(async () => {
+      if (!q) {
+        setResults([])
+        return
+      }
       try {
         setResults(await searchQuartiers(q, controller.signal))
       } catch (e) {
         if ((e as Error).name !== "AbortError") setResults([])
       }
-    }, 250)
+    }, q ? 250 : 0)
     return () => {
       clearTimeout(id)
       controller.abort()
