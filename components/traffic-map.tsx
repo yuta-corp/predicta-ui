@@ -12,29 +12,31 @@ const TANA: [number, number] = [47.5210, -18.8792]
 
 export type TrafficMapHandle = { flyTo: (lon: number, lat: number) => void }
 
-// rate-driven line color, evaluated in-engine.
+// Veines vertes — flux encodé par luminosité, pas par teinte. Tout reste visible.
 const LINE_COLOR: maplibregl.ExpressionSpecification = [
   "step",
   ["coalesce", ["get", "rate"], -1],
-  "#3A3F34", // rate < 0 → inconnu
+  "#2E3A27", // rate < 0 → inconnu (vert sourd)
   0,
-  "#0A0A0A", // bloqué
+  "#3F7A34", // bloqué → vert profond
   0.25,
-  "#5B6650", // lent
+  "#66B23C", // lent
   0.5,
-  "#9FCA69", // moyen
+  "#9FE85C", // moyen
   0.75,
-  "#C1FF72", // fluide
+  "#C1FF72", // fluide → lime éclatant
 ]
 
 export default function TrafficMap({
   handleRef,
   onData,
+  onReady,
   theme,
   children,
 }: {
   handleRef?: Ref<TrafficMapHandle>
   onData?: (data: TrafficCollection, partial: boolean) => void
+  onReady?: () => void
   theme?: "dark" | "light"
   children?: React.ReactNode
 }) {
@@ -72,12 +74,12 @@ export default function TrafficMap({
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": LINE_COLOR,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 12],
-          "line-opacity": 0.25,
-          "line-blur": 4,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 7, 16, 20],
+          "line-opacity": 0.4,
+          "line-blur": 8,
         },
       })
-      // crisp line
+      // crisp line — veines épaisses, bien chargées
       map.addLayer({
         id: "traffic-line",
         type: "line",
@@ -85,9 +87,11 @@ export default function TrafficMap({
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": LINE_COLOR,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 4],
+          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 2.2, 16, 7],
+          "line-opacity": 0.95,
         },
       })
+      onReady?.() // basemap prêt → lève le loader; le trafic (payload lourd) arrive après
       void loadTraffic()
     })
 
@@ -122,7 +126,7 @@ export default function TrafficMap({
 
   return (
     <div className="relative h-dvh w-full">
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="h-full w-full" />
       {children}
     </div>
   )
