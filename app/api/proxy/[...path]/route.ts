@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 
-const ALLOWED = new Set(["traffic", "quartiers"])
+const ALLOWED = new Set(["traffic"])
 
 export async function GET(
   req: NextRequest,

@@ -17,11 +17,6 @@ const TRAFFIC = {
   ],
 }
 
-const QUARTIERS = [
-  { name: "Analakely", lon: 47.5257, lat: -18.9067 },
-  { name: "Ambohipo", lon: 47.5486, lat: -18.9183 },
-]
-
 // Coupe tout réseau externe (fond de carte MapLibre / OpenFreeMap) pour un test hermétique et
 // rapide. Les overlays (stats, légende, recherche) se rendent indépendamment du fond de carte.
 async function mockBackend(page: Page, opts: { partial?: boolean } = {}) {
@@ -35,11 +30,7 @@ async function mockBackend(page: Page, opts: { partial?: boolean } = {}) {
       body: JSON.stringify(TRAFFIC),
     }),
   )
-  await page.route("**/api/proxy/quartiers**", (route) => {
-    const q = new URL(route.request().url()).searchParams.get("q")?.toLowerCase() ?? ""
-    const hits = QUARTIERS.filter((x) => x.name.toLowerCase().includes(q))
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(hits) })
-  })
+  // Recherche quartier = filtrage client sur seed statique (lib/quartiers.json), aucun réseau.
   // Fond de carte : style MapLibre minimal hors-ligne (fond uni, zéro source réseau). Le map émet
   // "load" instantanément -> le fetch trafic (gated sur "load") part -> onData alimente les stats.
   await page.route(/tiles\.openfreemap\.org\/styles\//, (route) =>
@@ -84,12 +75,16 @@ test("la recherche de quartier filtre et propose des résultats", async ({ page 
   await mockBackend(page)
   await page.goto("/")
 
-  await page.getByPlaceholder("Chercher un quartier…").fill("amb")
-  // debounce 250 ms côté client ; Ambohipo contient "amb", pas Analakely.
-  await expect(page.getByText("Ambohipo")).toBeVisible()
+  // attendre que l'intro (loader plein écran) se retire avant d'interagir (init carte + minMs + fondu).
+  await expect(page.getByRole("progressbar")).toHaveCount(0, { timeout: 15000 })
+
+  const input = page.getByPlaceholder("Chercher un quartier…")
+  // filtrage instantané côté client sur le seed statique ; "ambohipo" match, pas "analakely".
+  await input.fill("ambohipo")
+  await expect(page.getByText("Ambohipo", { exact: true })).toBeVisible()
   await expect(page.getByText("Analakely")).toHaveCount(0)
 
   // sélection : recentre (flyTo) et remplit l'input sans planter.
-  await page.getByText("Ambohipo").click()
-  await expect(page.getByPlaceholder("Chercher un quartier…")).toHaveValue("Ambohipo")
+  await page.getByText("Ambohipo", { exact: true }).first().click()
+  await expect(input).toHaveValue("Ambohipo")
 })

@@ -30,13 +30,11 @@ const LINE_COLOR: maplibregl.ExpressionSpecification = [
 export default function TrafficMap({
   handleRef,
   onData,
-  onReady,
   theme,
   children,
 }: {
   handleRef?: Ref<TrafficMapHandle>
   onData?: (data: TrafficCollection, partial: boolean) => void
-  onReady?: () => void
   theme?: "dark" | "light"
   children?: React.ReactNode
 }) {
@@ -74,12 +72,12 @@ export default function TrafficMap({
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": LINE_COLOR,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 7, 16, 20],
-          "line-opacity": 0.4,
-          "line-blur": 8,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 3, 16, 9],
+          "line-opacity": 0.3,
+          "line-blur": 6,
         },
       })
-      // crisp line — veines épaisses, bien chargées
+      // crisp line — veines fines, carte reste lisible
       map.addLayer({
         id: "traffic-line",
         type: "line",
@@ -87,12 +85,11 @@ export default function TrafficMap({
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": LINE_COLOR,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 2.2, 16, 7],
-          "line-opacity": 0.95,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 1, 16, 3.5],
+          "line-opacity": 0.9,
         },
       })
-      onReady?.() // basemap prêt → lève le loader; le trafic (payload lourd) arrive après
-      void loadTraffic()
+      void loadTraffic() // basemap prêt ; loader reste jusqu'à onData (trafic peint à 100%)
     })
 
     let cancelled = false

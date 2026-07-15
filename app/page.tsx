@@ -26,7 +26,6 @@ export default function Page() {
   const [data, setData] = useState<TrafficCollection | null>(null)
   const [partial, setPartial] = useState(false)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
-  const [mapReady, setMapReady] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const { resolvedTheme } = useTheme()
 
@@ -37,17 +36,16 @@ export default function Page() {
   }, [])
 
   const summary = computeLiveSummary(data)
-  const ready = updatedAt !== null // trafic chargé → révèle le HUD
+  const ready = updatedAt !== null // trafic peint → lève le loader ET révèle le HUD
 
   return (
     <>
-    <LoadingScreen done={mapReady} />
+    <LoadingScreen done={ready} />
     <TrafficMap
       // remount on theme change → clean basemap swap without layer surgery
       key={`${resolvedTheme}-${reloadKey}`}
       handleRef={handleRef}
       onData={onData}
-      onReady={() => setMapReady(true)}
       theme={resolvedTheme === "light" ? "light" : "dark"}
     >
       <Atmosphere />
