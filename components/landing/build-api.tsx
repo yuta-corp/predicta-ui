@@ -90,7 +90,10 @@ export function BuildApi() {
           </div>
 
           {/* Le même trafic, dans votre carte — le snippet réel */}
-          <FadeUp>
+          {/* min-w-0 : sans quoi le jeton URL insécable du snippet force la
+              piste de grille plus large que l'écran sur mobile → barre de
+              scroll horizontale (le minmax(0,…) mobile n'existe pas). */}
+          <FadeUp className="min-w-0">
             <div className="overflow-hidden rounded-md border border-border/80 bg-[#0b0d09] text-[#e8f0dd]">
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
                 <span className="font-mono text-[11px] tracking-wide text-[#9aa892]">

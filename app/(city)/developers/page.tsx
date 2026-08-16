@@ -11,7 +11,7 @@ function Code({ children, label }: { children: string; label?: string }) {
           {label}
         </p>
       )}
-      <pre className="overflow-x-auto bg-muted/50 px-4 py-3 font-mono text-[11.5px] leading-relaxed text-foreground/80">
+      <pre className="overflow-x-auto whitespace-pre-wrap break-words bg-muted/50 px-4 py-3 font-mono text-[11.5px] leading-relaxed text-foreground/80">
         {children}
       </pre>
     </div>
