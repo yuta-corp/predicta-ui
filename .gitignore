@@ -35,3 +35,6 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# État local de l'app desktop (base SQLite) — jamais dans Git.
+.freebuff/

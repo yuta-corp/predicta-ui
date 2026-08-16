@@ -1,15 +1,32 @@
-import { Geist, Geist_Mono, Inter } from "next/font/google"
+import { Geist_Mono, Instrument_Sans } from "next/font/google"
+import type { Metadata, Viewport } from "next"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { CookieConsent } from "@/components/consent/cookie-consent"
+import { cn } from "@/lib/utils"
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const instrument = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
 
+// Une seule famille pour toute l'interface (Instrument Sans).
+// Monospace réservé au contenu réellement technique (code, JSON).
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+export const metadata: Metadata = {
+  title: "Predicta — The living map of Antananarivo",
+  description:
+    "Le trafic d'Antananarivo en temps réel. La ville est vivante : explorez les quartiers, observez les flux, construisez avec l'API.",
+}
+
+export const viewport: Viewport = {
+  themeColor: "#f2f4e9",
+}
 
 export default function RootLayout({
   children,
@@ -18,12 +35,18 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="fr"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn(
+        "antialiased",
+        instrument.variable,
+        fontMono.variable,
+        "font-sans"
+      )}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider defaultTheme="light">{children}</ThemeProvider>
+        <CookieConsent />
       </body>
     </html>
   )

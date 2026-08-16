@@ -2,11 +2,20 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Le scan Tailwind est EXPLICITEMENT limité à notre code : sans cela, il
+   lit tous les fichiers non gitignorés (binaires MapLibre dans /public,
+   base SQLite de l'app desktop dans .freebuff) et en extrait des
+   sélecteurs corrompus qui cassent la compilation CSS. */
+@source "../app/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source not "../public/**";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
+    --font-heading: var(--font-sans);
+    --font-mono: var(--font-mono);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -23,6 +32,7 @@
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
+    --color-destructive-foreground: var(--destructive-foreground);
     --color-destructive: var(--destructive);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
@@ -32,6 +42,10 @@
     --color-secondary: var(--secondary);
     --color-primary-foreground: var(--primary-foreground);
     --color-primary: var(--primary);
+    /* Lime pour le TEXTE sur papier : la lime claire (--primary) est un
+       signal de remplissage (boutons, traits, points) — illisible comme
+       texte sur le papier chaud. lime-ink est l'olive-lime profonde. */
+    --color-lime-ink: oklch(0.56 0.15 120);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
@@ -47,73 +61,86 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.147 0.004 49.3);
+/* ------------------------------------------------------------------
+   PREDICTA — The living map of Antananarivo.
+   Identité : lime (signal) × olive (routes) × ink (fond).
+   La lime n'est jamais décorative : elle signale mouvement, données,
+   interaction. Le reste de l'interface reste neutre et contrasté.
+------------------------------------------------------------------- */
+
+:root,
+.light {
+    /* Jour — papier chaud, encre, olive, lime en signal. */
+    --background: oklch(0.985 0.003 95);
+    --foreground: oklch(0.2 0.012 110);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.147 0.004 49.3);
+    --card-foreground: oklch(0.2 0.012 110);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.147 0.004 49.3);
-    --primary: oklch(0.527 0.154 150.069);
-    --primary-foreground: oklch(0.982 0.018 155.826);
-    --secondary: oklch(0.967 0.001 286.375);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.96 0.002 17.2);
-    --muted-foreground: oklch(0.547 0.021 43.1);
-    --accent: oklch(0.96 0.002 17.2);
-    --accent-foreground: oklch(0.214 0.009 43.1);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0.005 34.3);
-    --input: oklch(0.922 0.005 34.3);
-    --ring: oklch(0.714 0.014 41.2);
-    --chart-1: oklch(0.871 0.15 154.449);
-    --chart-2: oklch(0.723 0.219 149.579);
-    --chart-3: oklch(0.627 0.194 149.214);
-    --chart-4: oklch(0.527 0.154 150.069);
-    --chart-5: oklch(0.448 0.119 151.328);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.986 0.002 67.8);
-    --sidebar-foreground: oklch(0.147 0.004 49.3);
-    --sidebar-primary: oklch(0.627 0.194 149.214);
-    --sidebar-primary-foreground: oklch(0.982 0.018 155.826);
-    --sidebar-accent: oklch(0.96 0.002 17.2);
-    --sidebar-accent-foreground: oklch(0.214 0.009 43.1);
-    --sidebar-border: oklch(0.922 0.005 34.3);
-    --sidebar-ring: oklch(0.714 0.014 41.2);
+    --popover-foreground: oklch(0.2 0.012 110);
+    --primary: oklch(0.885 0.19 118);
+    --primary-foreground: oklch(0.16 0.01 105);
+    --secondary: oklch(0.955 0.008 105);
+    --secondary-foreground: oklch(0.26 0.015 110);
+    --muted: oklch(0.95 0.006 100);
+    --muted-foreground: oklch(0.49 0.02 110);
+    --accent: oklch(0.93 0.035 115);
+    --accent-foreground: oklch(0.28 0.045 120);
+    --destructive: oklch(0.6 0.2 27);
+    --destructive-foreground: oklch(0.985 0.003 95);
+    --border: oklch(0.885 0.01 105);
+    --input: oklch(0.885 0.01 105);
+    --ring: oklch(0.75 0.17 118 / 55%);
+    --chart-1: oklch(0.7 0.15 120);
+    --chart-2: oklch(0.82 0.17 115);
+    --chart-3: oklch(0.6 0.14 65);
+    --chart-4: oklch(0.55 0.19 40);
+    --chart-5: oklch(0.4 0.12 30);
+    --radius: 0.5rem;
+    --sidebar: oklch(0.975 0.003 100);
+    --sidebar-foreground: oklch(0.2 0.012 110);
+    --sidebar-primary: oklch(0.885 0.19 118);
+    --sidebar-primary-foreground: oklch(0.16 0.01 105);
+    --sidebar-accent: oklch(0.93 0.02 110);
+    --sidebar-accent-foreground: oklch(0.26 0.015 110);
+    --sidebar-border: oklch(0.885 0.01 105);
+    --sidebar-ring: oklch(0.75 0.17 118 / 55%);
 }
 
 .dark {
-    --background: oklch(0.147 0.004 49.3);
-    --foreground: oklch(0.986 0.002 67.8);
-    --card: oklch(0.214 0.009 43.1);
-    --card-foreground: oklch(0.986 0.002 67.8);
-    --popover: oklch(0.214 0.009 43.1);
-    --popover-foreground: oklch(0.986 0.002 67.8);
-    --primary: oklch(0.448 0.119 151.328);
-    --primary-foreground: oklch(0.982 0.018 155.826);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.268 0.011 36.5);
-    --muted-foreground: oklch(0.714 0.014 41.2);
-    --accent: oklch(0.268 0.011 36.5);
-    --accent-foreground: oklch(0.986 0.002 67.8);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.547 0.021 43.1);
-    --chart-1: oklch(0.871 0.15 154.449);
-    --chart-2: oklch(0.723 0.219 149.579);
-    --chart-3: oklch(0.627 0.194 149.214);
-    --chart-4: oklch(0.527 0.154 150.069);
-    --chart-5: oklch(0.448 0.119 151.328);
-    --sidebar: oklch(0.214 0.009 43.1);
-    --sidebar-foreground: oklch(0.986 0.002 67.8);
-    --sidebar-primary: oklch(0.723 0.219 149.579);
-    --sidebar-primary-foreground: oklch(0.982 0.018 155.826);
-    --sidebar-accent: oklch(0.268 0.011 36.5);
-    --sidebar-accent-foreground: oklch(0.986 0.002 67.8);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.547 0.021 43.1);
+    color-scheme: dark;
+    /* Nuit — encre profonde, olive discrète, lime en signal. */
+    --background: oklch(0.14 0.005 105);
+    --foreground: oklch(0.93 0.012 110);
+    --card: oklch(0.17 0.007 105);
+    --card-foreground: oklch(0.93 0.012 110);
+    --popover: oklch(0.17 0.007 105);
+    --popover-foreground: oklch(0.93 0.012 110);
+    --primary: oklch(0.885 0.19 118);
+    --primary-foreground: oklch(0.16 0.01 105);
+    --secondary: oklch(0.22 0.01 110);
+    --secondary-foreground: oklch(0.93 0.012 110);
+    --muted: oklch(0.2 0.008 110);
+    --muted-foreground: oklch(0.66 0.018 110);
+    --accent: oklch(0.24 0.014 115);
+    --accent-foreground: oklch(0.93 0.012 110);
+    --destructive: oklch(0.63 0.2 27);
+    --destructive-foreground: oklch(0.985 0.003 95);
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 14%);
+    --ring: oklch(0.885 0.19 118 / 45%);
+    --chart-1: oklch(0.72 0.16 120);
+    --chart-2: oklch(0.84 0.18 116);
+    --chart-3: oklch(0.68 0.15 70);
+    --chart-4: oklch(0.62 0.19 40);
+    --chart-5: oklch(0.5 0.14 30);
+    --sidebar: oklch(0.15 0.005 105);
+    --sidebar-foreground: oklch(0.93 0.012 110);
+    --sidebar-primary: oklch(0.885 0.19 118);
+    --sidebar-primary-foreground: oklch(0.16 0.01 105);
+    --sidebar-accent: oklch(0.22 0.01 110);
+    --sidebar-accent-foreground: oklch(0.93 0.012 110);
+    --sidebar-border: oklch(1 0 0 / 12%);
+    --sidebar-ring: oklch(0.885 0.19 118 / 45%);
 }
 
 @layer base {
@@ -126,4 +153,263 @@
   html {
     @apply font-sans;
     }
+}
+
+/* ------------------------------------------------------------------
+   Motion Predicta — chaque animation a une fonction : révéler,
+   guider, connecter. Zéro motion décorative.
+------------------------------------------------------------------- */
+
+/* Le logo respire — la marque du vivant, très lent, jamais décoratif. */
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.animate-breathe {
+  animation: breathe 5s ease-in-out infinite;
+}
+
+/* Révélation au scroll — pilotée par useReveal (IntersectionObserver). */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Point de vie — battement du rafraîchissement des données. */
+@keyframes beat {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(192, 254, 113, 0.45);
+  }
+  50% {
+    transform: scale(1.35);
+    box-shadow: 0 0 0 6px rgba(192, 254, 113, 0);
+  }
+}
+
+.animate-beat {
+  animation: beat 2.4s ease-in-out infinite;
+}
+
+/* Voile d'encre du héros — la ville se réveille : le champ s'assombrit
+   puis se dissout, laissant la carte naître derrière. */
+@keyframes veil-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-veil-out {
+  animation: veil-out 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+
+/* Bande des quartiers — la ville défile, pause au survol. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 70s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* De la donnée brute à la ville : la route se dessine, puis le trafic coule. */
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dash-flow {
+  0% {
+    stroke-dashoffset: 240;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.road-draw {
+  stroke-dasharray: 480;
+  stroke-dashoffset: 480;
+}
+
+.is-visible .road-draw {
+  animation: draw-line 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+}
+
+.road-flow {
+  opacity: 0;
+  stroke-dasharray: 10 16;
+}
+
+.is-visible .road-flow {
+  animation: dash-flow 1.2s linear 1.9s infinite both;
+}
+
+/* Trafic ralenti (survol de rate) : le flux s'allonge et ralentit. */
+.road-flow-slow {
+  stroke-dasharray: 26 40;
+}
+
+.is-visible .road-flow-slow {
+  animation-duration: 2.6s;
+}
+
+/* Indicateur de scroll — chevron qui descend. */
+@keyframes scroll-cue {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+.animate-scroll-cue {
+  animation: scroll-cue 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes scan-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+}
+
+.scan-pulse {
+  animation: scan-pulse 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.7s ease both;
+}
+
+/* Quadrillage technique des scènes immersives — les couches de la carte se
+   superposent sur le relief (scène « Une ville en mouvement »). */
+.landing-grid {
+  background-image:
+    linear-gradient(rgba(74, 81, 60, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 81, 60, 0.08) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    black 35%,
+    transparent 72%
+  );
+  mask-image: radial-gradient(ellipse at center, black 35%, transparent 72%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-pulse,
+  .animate-rise,
+  .animate-fade-in,
+  .animate-breathe,
+  .animate-beat,
+  .animate-scroll-cue,
+  .animate-marquee {
+    animation: none;
+  }
+  .animate-veil-out {
+    animation: none;
+    opacity: 0;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .road-draw {
+    stroke-dashoffset: 0;
+  }
+  .is-visible .road-draw,
+  .is-visible .road-flow,
+  .is-visible .road-flow-slow {
+    animation: none;
+  }
+  .road-flow {
+    opacity: 1;
+  }
+}
+
+/* La carte Predicta a ses propres contrôles et son attribution :
+   on masque le logo et l'attribution par défaut de MapLibre. */
+.maplibregl-ctrl-logo,
+.maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+/* Zoom natif poussé sous la barre haute (parité déploy/tag-ip). */
+.maplibregl-ctrl-top-right {
+  margin-top: 4.25rem;
+  margin-right: 0.75rem;
+}
+
+.maplibregl-canvas {
+  outline: none;
 }
