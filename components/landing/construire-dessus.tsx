@@ -59,7 +59,7 @@ export function ConstruireDessus() {
                 GET /traffic
               </span>
             </div>
-            <pre className="overflow-x-auto p-4 font-mono text-[12px] leading-[1.8]">
+            <pre className="overflow-x-auto whitespace-pre-wrap break-words p-4 font-mono text-[12px] leading-[1.8]">
               <code>
                 <JsonLine depth={0} text='{ "type": "Feature",' />
                 <JsonLine depth={1} text='"properties": {' />
