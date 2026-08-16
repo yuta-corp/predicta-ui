@@ -24,39 +24,34 @@ function searchQuartiers(query: string): Quartier[] {
   return [...starts, ...contains].slice(0, MAX_RESULTS)
 }
 
+/**
+ * Recherche de quartiers — champ inline dans la barre de navigation.
+ * On tape directement dans la barre, les résultats tombent en liste sous le
+ * champ ; sélectionner un résultat déplace la carte sur le quartier.
+ */
 export function Search() {
   const { engine } = useTraffic()
-  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [active, setActive] = useState(0)
+  const [focused, setFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
   const results = useMemo(() => searchQuartiers(query), [query])
+  const open = focused && query.trim() !== ""
 
-  // Raccourci clavier ⌘K / Ctrl+K.
+  // Raccourci clavier ⌘K / Ctrl+K → focus la recherche directement.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault()
-        setOpen((o) => !o)
+        inputRef.current?.focus()
       }
-      if (e.key === "Escape") setOpen(false)
+      if (e.key === "Escape") inputRef.current?.blur()
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
-
-  useEffect(() => {
-    if (!open) return
-    // Déféré hors du corps d'effet : réinitialisation + focus après ouverture.
-    const raf = requestAnimationFrame(() => {
-      setQuery("")
-      setActive(0)
-      inputRef.current?.focus()
-    })
-    return () => cancelAnimationFrame(raf)
-  }, [open])
 
   useEffect(() => {
     const el = listRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)
@@ -65,7 +60,9 @@ export function Search() {
 
   const select = (q: Quartier) => {
     engine.selectQuartier(q)
-    setOpen(false)
+    setQuery("")
+    setActive(0)
+    inputRef.current?.blur()
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -78,99 +75,97 @@ export function Search() {
     } else if (e.key === "Enter" && results[active]) {
       e.preventDefault()
       select(results[active])
+    } else if (e.key === "Escape") {
+      inputRef.current?.blur()
     }
   }
 
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex h-9 items-center gap-2 rounded-sm border border-border/80 bg-background/60 px-3 text-[13px] text-muted-foreground backdrop-blur-sm transition-colors hover:border-border hover:text-foreground"
-        aria-label="Rechercher un quartier"
+      <div
+        className={cn(
+          "flex items-center gap-1.5 rounded-sm border bg-background/60 backdrop-blur-sm transition-colors",
+          open ? "border-primary" : "border-border/80 focus-within:border-border"
+        )}
       >
-        <SearchIcon className="h-3.5 w-3.5" aria-hidden />
-        <span className="hidden sm:inline">Rechercher un quartier</span>
-        <span className="ml-2 hidden rounded-[4px] border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground md:inline">
-          ⌘K
-        </span>
-      </button>
+        <SearchIcon className="ml-2.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setActive(0)
+          }}
+          onKeyDown={onKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Rechercher un quartier"
+          aria-label="Rechercher un quartier"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="search-results"
+          className="h-9 w-32 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground/70 sm:w-44 lg:w-56"
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("")
+              setActive(0)
+              inputRef.current?.focus()
+            }}
+            className="mr-1.5 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Effacer la recherche"
+          >
+            <XIcon className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ) : (
+          <span className="mr-2 hidden shrink-0 rounded-[4px] border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground lg:inline">
+            ⌘K
+          </span>
+        )}
+      </div>
 
       {open && (
-        <div
-          className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4 sm:pt-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Recherche de quartiers"
+        <ul
+          id="search-results"
+          ref={listRef}
+          role="listbox"
+          aria-label="Résultats de recherche"
+          className="absolute right-0 top-full z-50 mt-2 w-72 max-h-80 overflow-y-auto rounded-md border border-border bg-background/95 py-2 shadow-[0_24px_64px_rgba(30,40,20,0.2)] backdrop-blur-md"
         >
-          <div className="animate-rise w-full max-w-xl">
-            <div className="overflow-hidden rounded-lg border border-border bg-background/90 shadow-[0_24px_64px_rgba(30,40,20,0.2)] backdrop-blur-md">
-              <div className="flex items-center gap-3 border-b border-border/70 px-4">
-                <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                <input
-                  ref={inputRef}
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value)
-                    setActive(0)
-                  }}
-                  onKeyDown={onKeyDown}
-                  placeholder="Quartier, adresse, repère…"
-                  className="h-12 w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/70"
-                  role="combobox"
-                  aria-expanded={results.length > 0}
-                  aria-controls="search-results"
-                />
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="rounded-sm p-1 text-muted-foreground hover:text-foreground"
-                  aria-label="Fermer la recherche"
-                >
-                  <XIcon className="h-4 w-4" aria-hidden />
-                </button>
-              </div>
-
-              <ul id="search-results" ref={listRef} role="listbox" className="max-h-80 overflow-y-auto py-2">
-                {results.length === 0 ? (
-                  <li className="px-4 py-3 text-[13px] text-muted-foreground">
-                    {query.trim()
-                      ? "Aucun quartier ne correspond à cette recherche."
-                      : "Tapez un nom de quartier pour explorer Tana."}
-                  </li>
-                ) : (
-                  results.map((q, i) => {
-                    const distance = haversineKm([q.lon, q.lat], TANA_CENTER)
-                    return (
-                      <li key={q.id} role="option" aria-selected={i === active}>
-                        <button
-                          type="button"
-                          data-index={i}
-                          onClick={() => select(q)}
-                          onMouseEnter={() => setActive(i)}
-                          className={cn(
-                            "flex w-full items-center justify-between px-4 py-2.5 text-left text-[13.5px] transition-colors",
-                            i === active ? "bg-accent text-accent-foreground" : "text-foreground"
-                          )}
-                        >
-                          <span className="truncate">{q.name}</span>
-                          <span className="shrink-0 pl-4 text-[11px] text-muted-foreground">
-                            {distance < 1
-                              ? `${Math.round(distance * 1000)} m du centre`
-                              : `${distance.toFixed(1)} km du centre`}
-                          </span>
-                        </button>
-                      </li>
-                    )
-                  })
-                )}
-              </ul>
-            </div>
-            <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
-              Entrée pour explorer · Échap pour fermer
-            </p>
-          </div>
-        </div>
+          {results.length === 0 ? (
+            <li className="px-4 py-3 text-[13px] text-muted-foreground">
+              Aucun quartier ne correspond à cette recherche.
+            </li>
+          ) : (
+            results.map((q, i) => {
+              const distance = haversineKm([q.lon, q.lat], TANA_CENTER)
+              return (
+                <li key={q.id} role="option" aria-selected={i === active}>
+                  <button
+                    type="button"
+                    data-index={i}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => select(q)}
+                    onMouseEnter={() => setActive(i)}
+                    className={cn(
+                      "flex w-full items-center justify-between px-4 py-2.5 text-left text-[13.5px] transition-colors",
+                      i === active ? "bg-accent text-accent-foreground" : "text-foreground"
+                    )}
+                  >
+                    <span className="truncate">{q.name}</span>
+                    <span className="shrink-0 pl-4 text-[11px] text-muted-foreground">
+                      {distance < 1
+                        ? `${Math.round(distance * 1000)} m du centre`
+                        : `${distance.toFixed(1)} km du centre`}
+                    </span>
+                  </button>
+                </li>
+              )
+            })
+          )}
+        </ul>
       )}
     </div>
   )

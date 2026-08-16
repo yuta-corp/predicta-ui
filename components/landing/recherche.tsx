@@ -1,10 +1,10 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { SearchIcon } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
-import { useTraffic } from "@/hooks/use-traffic"
 import { quartiers } from "@/lib/data/quartiers"
 import type { Quartier } from "@/lib/types/traffic"
 import { EASE, LineReveal } from "@/components/landing/motion-utils"
@@ -27,27 +27,25 @@ function searchQuartiers(query: string): Quartier[] {
 }
 
 /**
- * Scène 07 — VOTRE VILLE. EN TEMPS RÉEL.
+ * Scène — VOTRE VILLE. EN TEMPS RÉEL.
  *
- * La recherche n'ouvre pas un menu : elle déplace la carte. Tapez un nom de
- * quartier — la caméra s'y glisse, le trafic s'installe. La carte de fond est
- * aussi une interface ici : cliquez, elle scanne.
+ * La recherche n'ouvre pas un menu : elle ouvre la carte réelle sur le
+ * quartier. La carte vit dans le héros et sur /map — ici, on la dirige.
  */
 export function Recherche() {
-  const { engine, state } = useTraffic()
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const [active, setActive] = useState(0)
   const [focused, setFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const results = useMemo(() => searchQuartiers(query), [query])
-  const selectedName = state.activeQuartier?.name ?? null
 
   const select = (q: Quartier) => {
-    engine.selectQuartier(q)
     setQuery("")
     setActive(0)
     inputRef.current?.blur()
+    router.push(`/map?q=${encodeURIComponent(q.name)}`)
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -69,15 +67,9 @@ export function Recherche() {
     <section
       id="recherche"
       aria-label="Votre ville, en temps réel"
-      className="pointer-events-none relative flex min-h-[115vh] items-start justify-center pt-[18vh]"
+      className="relative border-t border-border/60 bg-background"
     >
-      {/* Voile : la carte respire derrière la recherche. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[45vh] bg-gradient-to-b from-background via-background/50 to-transparent"
-      />
-
-      <div className="relative w-full max-w-2xl px-5 sm:px-8">
+      <div className="relative mx-auto w-full max-w-2xl px-5 py-24 sm:px-8 sm:py-32">
         <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-foreground/50">
           Votre ville
         </p>
@@ -85,8 +77,8 @@ export function Recherche() {
           Votre ville. En temps réel.
         </LineReveal>
 
-        {/* La recherche : taper, c'est déplacer la carte. */}
-        <div className="pointer-events-auto relative mt-10">
+        {/* La recherche : taper un nom, c'est diriger la carte. */}
+        <div className="relative mt-10">
           <div className="flex items-center gap-3 border-b border-foreground/25 pb-3 transition-colors focus-within:border-primary">
             <SearchIcon className="h-4 w-4 shrink-0 text-foreground/50" aria-hidden />
             <input
@@ -141,7 +133,7 @@ export function Recherche() {
                         <span className="truncate">{q.name}</span>
                         {i === active && (
                           <span className="ml-4 shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-lime-ink">
-                            explorer →
+                            ouvrir la carte →
                           </span>
                         )}
                       </button>
@@ -153,22 +145,10 @@ export function Recherche() {
           </AnimatePresence>
         </div>
 
-        {/* La carte répond — l'état réel du moteur, en clair. */}
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={selectedName ?? "idle"}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.45, ease: EASE }}
-            className="mt-5 min-h-5 font-mono text-[11.5px] tracking-wide text-muted-foreground"
-          >
-            {selectedName
-              ? `La carte se déplace vers ${selectedName}.`
-              : "Tapez un nom — la carte s'y déplace. Ou cliquez la carte, elle scanne."}
-          </motion.p>
-        </AnimatePresence>
-
+        <p className="mt-6 max-w-lg text-[14.5px] leading-relaxed text-muted-foreground">
+          Choisissez un quartier — la carte s'ouvre dessus, le trafic s'installe.
+          Ou explorez directement la carte.
+        </p>
         <p className="mt-10 font-mono text-[11px] tracking-wide text-foreground/55">
           {quartiers.length} quartiers au catalogue · trafic servi en GeoJSON ·
           revalidation 45 s

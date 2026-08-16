@@ -17,14 +17,10 @@ export function Angle() {
     <section
       id="angle"
       aria-label="Une ville en mouvement"
-      className="relative flex min-h-[105vh] items-center overflow-hidden"
+      className="relative flex min-h-[105vh] items-center overflow-hidden bg-background"
     >
-      {/* Quadrillage technique — les couches de la carte, superposées */}
+      {/* Quadrillage technique — les couches de la carte, superposées sur le papier. */}
       <div aria-hidden className="landing-grid pointer-events-none absolute inset-0" />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(20,26,12,0.3)_100%)]"
-      />
 
       <div className="relative mx-auto w-full max-w-6xl px-5 sm:px-8">
         <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-foreground/50">

@@ -22,13 +22,8 @@ export function DeuxEntrees() {
     <section
       id="deux-entrees"
       aria-label="Une ville, deux entrées"
-      className="relative border-t border-border/60"
+      className="relative border-t border-border/60 bg-background"
     >
-      {/* Voile : la carte reste lisible, le texte prend le dessus. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-background/70"
-      />
       <div className="relative mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
         <Kicker>Deux façons d'entrer</Kicker>
         <LineReveal className="mt-5 max-w-3xl text-[clamp(2.4rem,6vw,4.75rem)] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground">

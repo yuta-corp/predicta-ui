@@ -38,13 +38,8 @@ export function Pourquoi() {
     <section
       id="pourquoi"
       aria-label="Pourquoi Predicta"
-      className="relative border-t border-border/60"
+      className="relative border-t border-border/60 bg-background"
     >
-      {/* Voile : la perspective reste présente, le texte prend le dessus. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-background/65"
-      />
       <div className="relative mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
         <Kicker>Pourquoi Predicta</Kicker>
         <LineReveal className="mt-5 max-w-3xl text-[clamp(2.4rem,6vw,4.75rem)] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground">

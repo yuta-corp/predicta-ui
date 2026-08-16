@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { motion, useTransform } from "motion/react"
@@ -7,13 +8,18 @@ import { motion, useTransform } from "motion/react"
 import { Wordmark } from "@/components/shell/wordmark"
 import { EASE, useSectionProgress } from "@/components/landing/motion-utils"
 
+// La carte vit ICI, dans le héros — une seule instance, qui s'efface avec lui.
+const CityMap = dynamic(
+  () => import("@/components/map/city-map").then((m) => m.CityMap),
+  { ssr: false }
+)
+
 /**
  * Scène 01 — LA VILLE SE RÉVEILLE.
  *
- * Aucune carte ici : le voile de fond (CityBackdrop) est déjà vivant derrière.
- * L'encre se dissout, la ville apparaît, la typographie entre en cascade —
- * puis, quand on scrolle, le titre quitte lentement l'écran pendant que la
- * caméra continue de s'enfoncer dans la ville.
+ * La carte est dans cette section : l'encre se dissout, la ville apparaît,
+ * la typographie entre en cascade. En scrollant, le titre et la carte
+ * quittent ensemble l'écran — la suite du récit se pose sur le papier.
  */
 export function Hero() {
   const { ref, scrollYProgress } = useSectionProgress()
@@ -28,6 +34,17 @@ export function Hero() {
       aria-label="Antananarivo — la carte vivante"
       className="relative h-[calc(100dvh-3.5rem)] min-h-[560px] overflow-hidden sm:h-[calc(100dvh-4rem)]"
     >
+      {/* La carte — la ville derrière le récit, en dérive lente. */}
+      <div aria-hidden className="absolute inset-0 z-0">
+        <CityMap
+          forceLight
+          drift
+          interactive={false}
+          showControls={false}
+          className="h-full w-full"
+        />
+      </div>
+
       {/* Voile d'encre : la ville se réveille, l'écran se dissout. */}
       <div
         aria-hidden

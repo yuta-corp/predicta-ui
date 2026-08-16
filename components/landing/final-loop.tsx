@@ -4,36 +4,22 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { motion } from "motion/react"
 
-import { Wordmark } from "@/components/shell/wordmark"
 import { FadeUp, LineReveal } from "@/components/landing/motion-utils"
 
 /**
  * Scène 12 — LA BOUCLE FINALE.
  *
- * La caméra recule, la ville entière réapparaît — toutes les routes bougent.
- * La même phrase qu'au matin, mais le visiteur sait maintenant ce qu'il voit.
+ * Le même matin qu'au début : la ville est vivante. La marque vit déjà dans
+ * le héros et le pied de page — ici, seulement la phrase et l'invitation.
  */
 export function FinalLoop() {
   return (
     <section
       id="final"
       aria-label="La ville est vivante"
-      className="relative flex min-h-[105vh] items-center justify-center overflow-hidden text-center"
+      className="relative flex min-h-[105vh] items-center justify-center overflow-hidden border-t border-border/60 bg-background text-center"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[30vh] bg-gradient-to-b from-background/85 to-transparent"
-      />
       <div className="relative mx-auto w-full max-w-4xl px-5 py-28 sm:px-8">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: "-12% 0px" }}
-          transition={{ duration: 0.9 }}
-          className="flex justify-center"
-        >
-          <Wordmark size="lg" />
-        </motion.div>
         <LineReveal
           as="h2"
           className="mt-6 text-[clamp(2.8rem,8vw,6.25rem)] font-semibold leading-[0.92] tracking-[-0.035em] text-foreground"

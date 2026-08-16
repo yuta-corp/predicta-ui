@@ -57,7 +57,7 @@ export function DocumentLayout({
               {label}
             </Link>
           ))}
-          <span className="ml-auto">© 2026 [RAISON SOCIALE]</span>
+          <span className="ml-auto">© 2026 Predicta</span>
         </div>
       </footer>
     </main>

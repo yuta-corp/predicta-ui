@@ -222,24 +222,6 @@
   animation: veil-out 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
 
-/* Bande des quartiers — la ville défile, pause au survol. */
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-marquee {
-  animation: marquee 70s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
 /* De la donnée brute à la ville : la route se dessine, puis le trafic coule. */
 @keyframes draw-line {
   to {
@@ -372,9 +354,6 @@
   .animate-breathe,
   .animate-beat,
   .animate-scroll-cue,
-  .animate-marquee {
-    animation: none;
-  }
   .animate-veil-out {
     animation: none;
     opacity: 0;

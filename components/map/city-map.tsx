@@ -16,7 +16,6 @@ setWorkerUrl("/maplibre-gl-worker.mjs")
 import type {
   DataDrivenPropertyValueSpecification,
   FilterSpecification,
-  GeoJSONSourceSpecification,
   LayerSpecification,
   StyleSpecification,
   SymbolLayerSpecification,
@@ -25,7 +24,7 @@ import "maplibre-gl/dist/maplibre-gl.css"
 
 import { trafficEngine, type SelectedRoute } from "@/lib/traffic/engine"
 import { buildGraticule } from "@/lib/map/graticule"
-import { quartiers } from "@/lib/data/quartiers"
+import { quartiersByLowerName } from "@/lib/data/quartiers"
 import type { TrafficFeature, TrafficFeatureCollection } from "@/lib/types/traffic"
 import { featureKey, TANA_CENTER } from "@/lib/geo"
 import { cn } from "@/lib/utils"
@@ -66,10 +65,8 @@ const THEMES = {
   light: {
     bg: "#f2f4e9",
     graticule: "rgba(72, 86, 50, 0.06)",
-    dots: "#7d9a4f",
     casing: "rgba(255, 255, 255, 0.9)",
     selected: "#9ccf3c",
-    label: "#4a513c",
     fluid: "#7fae3f",
     moderate: "#df9f3a",
     dense: "#d95f45",
@@ -78,10 +75,8 @@ const THEMES = {
   dark: {
     bg: "#0b0d09",
     graticule: "rgba(226, 240, 208, 0.05)",
-    dots: "#9fca69",
     casing: "rgba(5, 7, 4, 0.9)",
     selected: "#c0fe71",
-    label: "#cfe6b8",
     fluid: "#9fca69",
     moderate: "#e0b25c",
     dense: "#dd6a4c",
@@ -113,15 +108,6 @@ const BUCKET_FILTERS: Record<(typeof TILE_LAYERS)[number], FilterSpecification> 
   "traffic-unknown": ["!", ["has", "rate"]],
 }
 
-const QUARTIER_POINTS: GeoJSONSourceSpecification["data"] = {
-  type: "FeatureCollection",
-  features: quartiers.map((q) => ({
-    type: "Feature",
-    properties: {},
-    geometry: { type: "Point", coordinates: [q.lon, q.lat] },
-  })),
-}
-
 /** Sources Predicta injectées dans le style du basemap. */
 function predictaSources(): Record<string, SourceSpecification> {
   return {
@@ -132,7 +118,6 @@ function predictaSources(): Record<string, SourceSpecification> {
       minzoom: 12,
       maxzoom: 16,
     },
-    quartiers: { type: "geojson", data: QUARTIER_POINTS },
     selection: { type: "geojson", data: EMPTY_FC },
     hover: { type: "geojson", data: EMPTY_FC },
   }
@@ -160,17 +145,6 @@ function predictaLayers(isDark: boolean): LayerSpecification[] {
       paint: {
         "line-color": p.graticule,
         "line-width": 1,
-      },
-    },
-    {
-      id: "quartier-dots",
-      type: "circle",
-      source: "quartiers",
-      minzoom: 11,
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 15, 3],
-        "circle-color": p.dots,
-        "circle-opacity": 0.5,
       },
     },
     {
@@ -363,7 +337,6 @@ export function useMap() {
 // le rendu — la règle react-hooks/refs). Les contrôles l'interrogent au
 // moment de l'interaction.
 let liveMap: MapLibreMap | null = null
-let labelColor = "#4a513c"
 
 export function getLiveMap(): MapLibreMap | null {
   return liveMap
@@ -404,13 +377,10 @@ export function CityMap({
   showControls = true,
 }: CityMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
-  const labelsRef = useRef<Map<string, HTMLDivElement>>(new Map())
   const lastFocusId = useRef(0)
   const hoveredFeature = useRef<TrafficFeature | null>(null)
 
-  const [ready, setReady] = useState(false)
   const [pulse, setPulse] = useState<{ id: number; x: number; y: number } | null>(null)
   const [view, setView] = useState<MapView | null>(null)
 
@@ -424,6 +394,15 @@ export function CityMap({
     // caméra, scan et requête affichée de l'exploration précédente (landing)
     // ne doivent jamais fuir dans /map (ou l'inverse). Le cache store reste.
     trafficEngine.resetExploration()
+
+    // Deep-link /map?q=Analakely (recherche de la landing) : après le reset,
+    // la session vierge reçoit sa destination. Le subscribe plus bas applique
+    // ce focus dès que la carte est prête.
+    const q = new URLSearchParams(window.location.search).get("q")
+    if (q) {
+      const quartier = quartiersByLowerName[q.trim().toLowerCase()]
+      if (quartier) trafficEngine.selectQuartier(quartier)
+    }
 
     const isDarkNow = () =>
       forceDark
@@ -443,8 +422,6 @@ export function CityMap({
       })
       .then((style) => {
         if (disposed || !containerRef.current) return
-        labelColor = initialDark ? THEMES.dark.label : THEMES.light.label
-
         const map = new MapLibreMap({
           container,
           style,
@@ -457,6 +434,19 @@ export function CityMap({
           pitchWithRotate: false,
           fadeDuration: 120,
         })
+        // Mode décor : la carte est un fond, aucune interaction possible
+        // (molette, drag, double-clic, tactile, clavier). Seule la dérive
+        // pilote la caméra — le récit, pas le visiteur.
+        if (!interactive) {
+          map.scrollZoom.disable()
+          map.dragPan.disable()
+          map.dragRotate.disable()
+          map.touchZoomRotate.disable()
+          map.doubleClickZoom.disable()
+          map.boxZoom.disable()
+          map.keyboard.disable()
+          map.getCanvas().style.cursor = "default"
+        }
         mapRef.current = map
         liveMap = map
         if (process.env.NODE_ENV !== "production") {
@@ -476,7 +466,6 @@ export function CityMap({
         let refreshTimer: ReturnType<typeof setInterval> | null = null
         map.on("load", () => {
           syncSelection(map, trafficEngine.getSnapshot().selected)
-          setReady(true)
           onReady?.()
           const c = map.getCenter()
           setView({ lon: c.lng, lat: c.lat, zoom: map.getZoom() })
@@ -525,7 +514,6 @@ export function CityMap({
         // --- Thème : le basemap suit le clair/sombre (liberty ↔ dark) ---
         // Verrouillé quand forceDark / forceLight (voile narratif de la landing).
         const applyTheme = (isDark: boolean) => {
-          labelColor = isDark ? THEMES.dark.label : THEMES.light.label
           void loadPredictaStyle(isDark).then((next) => {
             if (map.isStyleLoaded()) map.setStyle(next)
           })
@@ -661,63 +649,6 @@ export function CityMap({
     }
   }, [interactive, onReady, drift, forceDark, forceLight, showControls])
 
-  // --- Labels HTML des quartiers (police de marque, zéro glyphs externes) ---
-  useEffect(() => {
-    const map = mapRef.current
-    const overlay = overlayRef.current
-    const labels = labelsRef.current
-    if (!map || !overlay) return
-
-    let raf = 0
-    const update = () => {
-      const zoom = map.getZoom()
-      const show = zoom >= 12.3
-      const opacity = Math.min(0.8, Math.max(0, (zoom - 12.3) / 1.1))
-      if (!show) {
-        for (const el of labels.values()) el.style.opacity = "0"
-        return
-      }
-      const bounds = map.getBounds()
-      const w = bounds.getWest() - 0.02
-      const s = bounds.getSouth() - 0.02
-      const e = bounds.getEast() + 0.02
-      const n = bounds.getNorth() + 0.02
-      for (const q of quartiers) {
-        if (q.lon < w || q.lon > e || q.lat < s || q.lat > n) {
-          labels.get(q.id)?.style.setProperty("opacity", "0")
-          continue
-        }
-        let el = labels.get(q.id)
-        if (!el) {
-          el = document.createElement("div")
-          el.className =
-            "pointer-events-none absolute left-0 top-0 select-none whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.14em] transition-opacity duration-300"
-          el.textContent = q.name
-          overlay.appendChild(el)
-          labels.set(q.id, el)
-        }
-        el.style.color = labelColor
-        const p = map.project([q.lon, q.lat])
-        el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0) translate(-50%, -130%)`
-        el.style.opacity = String(opacity)
-      }
-    }
-    const onMove = () => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(update)
-    }
-    map.on("move", onMove)
-    map.on("zoom", onMove)
-    update()
-    return () => {
-      map.off("move", onMove)
-      map.off("zoom", onMove)
-      cancelAnimationFrame(raf)
-      for (const el of labels.values()) el.remove()
-      labels.clear()
-    }
-  }, [ready])
-
   return (
     <MapContext.Provider value={{ view }}>
       <div
@@ -730,7 +661,6 @@ export function CityMap({
             sur .maplibregl-map) écrase les utilitaires Tailwind en cascade
             layers — on force le positionnement ici. */}
         <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
-        <div ref={overlayRef} className="pointer-events-none absolute inset-0" />
         {/* Vignette douce pour la profondeur */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_60%,rgba(20,26,12,0.14)_100%)]" />
         {pulse && (
