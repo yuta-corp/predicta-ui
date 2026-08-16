@@ -5,7 +5,7 @@ export default function TermsOfSalePage() {
     <DocumentLayout
       eyebrow="Legal"
       title="Conditions de vente"
-      intro="Dernière mise à jour : août 2026. Document en attente de validation."
+      intro="Dernière mise à jour : août 2026."
     >
       <Section title="Offres">
         <p>
@@ -17,10 +17,11 @@ export default function TermsOfSalePage() {
       </Section>
       <Section title="Modalités">
         <p>
-          [RAISON SOCIALE], [ADRESSE], immatriculée [NUMÉRO
-          D'IMMATRICULATION]. Paiement, facturation, droit de rétractation :
-          les modalités détaillées seront publiées lors du lancement des
-          offres. Contact : [EMAIL].
+          Predicta est édité par ANDRIAMAMIVONY Tiavintsoa Ulrich (éditeur
+          individuel), IVH80 Mandialaza — Madagascar, en partenariat avec
+          MAERI Consulting (Toamasina). Paiement, facturation, droit de
+          rétractation : les modalités détaillées seront publiées lors du
+          lancement des offres. Contact : yuta-mg@proton.me.
         </p>
       </Section>
     </DocumentLayout>

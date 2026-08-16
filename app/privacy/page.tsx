@@ -5,13 +5,14 @@ export default function PrivacyPage() {
     <DocumentLayout
       eyebrow="Legal"
       title="Politique de confidentialité"
-      intro="Dernière mise à jour : août 2026. Document en attente de validation — les informations entre crochets doivent être complétées."
+      intro="Dernière mise à jour : août 2026."
     >
       <Section title="1. Responsable du traitement">
         <p>
-          Predicta est édité par [RAISON SOCIALE], [ADRESSE], immatriculée
-          [NUMÉRO D'IMMATRICULATION]. Responsable de la publication :
-          [RESPONSABLE]. Contact : [EMAIL].
+          Predicta est édité par ANDRIAMAMIVONY Tiavintsoa Ulrich (éditeur
+          individuel), IVH80 Mandialaza — Madagascar. Responsable de la
+          publication : ANDRIAMAMIVONY Tiavintsoa Ulrich. Contact :
+          yuta-mg@proton.me.
         </p>
       </Section>
       <Section title="2. Données traitées">
@@ -43,7 +44,7 @@ export default function PrivacyPage() {
         <p>
           Vous disposez d'un droit d'accès, de rectification, d'effacement,
           de portabilité et d'opposition sur vos données. Pour exercer ces
-          droits, contactez [EMAIL]. Le{" "}
+          droits, contactez yuta-mg@proton.me. Le{" "}
           <a className="underline decoration-primary/50 underline-offset-4" href="/privacy-center">
             centre de confidentialité
           </a>{" "}

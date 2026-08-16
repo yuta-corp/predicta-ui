@@ -5,7 +5,7 @@ export default function TermsPage() {
     <DocumentLayout
       eyebrow="Legal"
       title="Conditions d'utilisation"
-      intro="Dernière mise à jour : août 2026. Document en attente de validation."
+      intro="Dernière mise à jour : août 2026."
     >
       <Section title="1. Objet">
         <p>
@@ -34,16 +34,16 @@ export default function TermsPage() {
       <Section title="4. Propriété intellectuelle">
         <p>
           L'interface, l'identité visuelle et la marque Predicta
-          appartiennent à [RAISON SOCIALE]. Les données cartographiques
+          appartiennent à l'éditeur du service. Les données cartographiques
           proviennent d'OpenStreetMap (© OpenStreetMap contributors,
           licence ODbL).
         </p>
       </Section>
       <Section title="5. Responsabilité">
         <p>
-          Le service est fourni « en l'état ». [RAISON SOCIALE] ne saurait
-          être tenue responsable des interruptions, erreurs ou conséquences
-          d'un usage des informations fournies.
+          Le service est fourni « en l'état ». L'éditeur ne saurait être
+          tenu responsable des interruptions, erreurs ou conséquences d'un
+          usage des informations fournies.
         </p>
       </Section>
     </DocumentLayout>

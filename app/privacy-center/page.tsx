@@ -23,7 +23,7 @@ const ACTIONS = [
   {
     title: "Contact confidentialité",
     text: "Questions ou demandes relatives à vos données.",
-    href: "mailto:[EMAIL]?subject=Confidentialit%C3%A9",
+    href: "mailto:yuta-mg@proton.me?subject=Confidentialit%C3%A9",
   },
 ] as const
 

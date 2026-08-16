@@ -30,12 +30,20 @@ const SECTIONS = [
 ] as const
 
 const ENTITY = [
-  ["Éditeur du service", "[RAISON SOCIALE], société [FORME JURIDIQUE] au capital de [CAPITAL] €"],
-  ["Siège social", "[ADRESSE COMPLÈTE]"],
-  ["Immatriculation", "RCS [VILLE] [NUMÉRO] — TVA intracommunautaire [NUMÉRO]"],
-  ["Directeur de la publication", "[PRÉNOM NOM]"],
+  ["Éditeur du service", "ANDRIAMAMIVONY Tiavintsoa Ulrich, éditeur individuel"],
+  ["Siège social", "IVH80 Mandialaza — Madagascar"],
+  ["Directeur de la publication", "ANDRIAMAMIVONY Tiavintsoa Ulrich"],
+  ["Contact", "yuta-mg@proton.me — réponse sous 48 h ouvrées"],
   ["Hébergement", "Vercel Inc., 340 Brannan Street, Suite 400, San Francisco, CA 94107, États-Unis"],
-  ["Contact", "[EMAIL CONTACT] — réponse sous 48 h ouvrées"],
+  ["Entreprise partenaire", "MAERI Consulting — Lot Z 0750 Ambodisaina Ivondro, Toamasina 501, Madagascar"],
+  [
+    "Contact partenaire",
+    "contact-maeri@telma.net · maeri.consulting.2024@gmail.com · Tél. +261 32 07 079 97 / +261 34 06 002 70",
+  ],
+  [
+    "Identifiants partenaire",
+    "NIF 4012745546 · STAT 68101 31 2024 0 00325 · RCS Toamasina 2024 A 00087 · CIF 0120073/DGI-M du 11/04/25",
+  ],
 ] as const
 
 export default function LegalPage() {
@@ -80,7 +88,7 @@ export default function LegalPage() {
       <Section title="3. Propriété intellectuelle">
         <p>
           L'interface, l'identité visuelle, le logotype et la marque Predicta
-          appartiennent à [RAISON SOCIALE]. Toute reproduction ou
+          appartiennent à l'éditeur du service. Toute reproduction ou
           réutilisation sans autorisation préalable est interdite, hors usage
           privé. Les données OpenStreetMap sont publiées sous licence ODbL
           (© OpenStreetMap contributors).
@@ -88,9 +96,9 @@ export default function LegalPage() {
       </Section>
       <Section title="4. Responsabilité">
         <p>
-          Le service est fourni « en l'état ». [RAISON SOCIALE] ne saurait
-          être tenue responsable des interruptions, erreurs, ou conséquences
-          d'un usage des informations fournies. Les conditions détaillées
+          Le service est fourni « en l'état ». L'éditeur ne saurait être
+          tenu responsable des interruptions, erreurs, ou conséquences d'un
+          usage des informations fournies. Les conditions détaillées
           figurent dans les conditions d'utilisation.
         </p>
       </Section>
