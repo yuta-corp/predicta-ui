@@ -332,21 +332,6 @@
   animation: fade-in 0.7s ease both;
 }
 
-/* Quadrillage technique des scènes immersives — les couches de la carte se
-   superposent sur le relief (scène « Une ville en mouvement »). */
-.landing-grid {
-  background-image:
-    linear-gradient(rgba(74, 81, 60, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 81, 60, 0.08) 1px, transparent 1px);
-  background-size: 56px 56px;
-  -webkit-mask-image: radial-gradient(
-    ellipse at center,
-    black 35%,
-    transparent 72%
-  );
-  mask-image: radial-gradient(ellipse at center, black 35%, transparent 72%);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .scan-pulse,
   .animate-rise,

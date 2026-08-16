@@ -7,7 +7,6 @@ import { DeuxEntrees } from "@/components/landing/deux-entrees"
 import { ConstruireDessus } from "@/components/landing/construire-dessus"
 import { Recherche } from "@/components/landing/recherche"
 import { BuildApi } from "@/components/landing/build-api"
-import { Angle } from "@/components/landing/angle"
 import { Pourquoi } from "@/components/landing/pourquoi"
 import { Futur } from "@/components/landing/futur"
 import { FinalLoop } from "@/components/landing/final-loop"
@@ -45,9 +44,6 @@ export default function LandingPage() {
 
           {/* Construire avec Predicta. */}
           <BuildApi />
-
-          {/* Une ville en mouvement, un autre angle. */}
-          <Angle />
 
           {/* Pourquoi Predicta. */}
           <Pourquoi />
