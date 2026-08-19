@@ -9,6 +9,7 @@ import { Search } from "@/components/map/search"
 import { Freshness } from "@/components/map/freshness"
 import { RoutePanel } from "@/components/map/route-panel"
 import { MapControls } from "@/components/map/map-controls"
+import { MapLegend } from "@/components/map/map-legend"
 import { useMap } from "@/components/map/city-map"
 import { formatCoordinates } from "@/lib/format"
 
@@ -65,6 +66,11 @@ export function MapShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
         </header>
+
+        {/* Légende trafic : palette colorée + signification, en haut à gauche. */}
+        <div className="absolute left-4 top-20 z-20 sm:left-6">
+          <MapLegend />
+        </div>
 
         {/* Panneau route sélectionnée (desktop : à droite, mobile : en bas) */}
         <div className="absolute bottom-24 right-4 z-20 sm:bottom-auto sm:right-6 sm:top-20 sm:bottom-auto">
