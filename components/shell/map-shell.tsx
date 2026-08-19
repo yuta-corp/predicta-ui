@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 
 import { Wordmark } from "@/components/shell/wordmark"
 import { Nav } from "@/components/shell/nav"
@@ -64,6 +65,25 @@ export function MapShell({ children }: { children: React.ReactNode }) {
             >
               Statut
             </Link>
+            <SignedOut>
+              <Link
+                href="/sign-in"
+                className="rounded-sm px-2.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Connexion
+              </Link>
+            </SignedOut>
+            <SignedIn>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: "h-8 w-8",
+                    userButtonPopoverCard: "bg-background border border-border",
+                    userButtonPopoverActionButton: "text-foreground hover:bg-accent/50",
+                  },
+                }}
+              />
+            </SignedIn>
           </div>
         </header>
 

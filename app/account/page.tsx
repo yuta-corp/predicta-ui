@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { UserButton, useUser } from "@clerk/nextjs"
 import { DocumentLayout } from "@/components/shell/document-layout"
 
 export default function AccountPage() {
+  const { user } = useUser()
   const [exportState, setExportState] = useState<"idle" | "requested">("idle")
   const [deleteStep, setDeleteStep] = useState<"idle" | "warning" | "confirmed">("idle")
 
@@ -16,10 +18,26 @@ export default function AccountPage() {
       {/* Profil */}
       <section className="mb-10">
         <h2 className="text-[15px] font-semibold tracking-tight">Profil</h2>
-        <p className="mt-2.5 max-w-2xl text-[13.5px] leading-relaxed text-foreground/80">
-          Aucune session n'est connectée sur cet appareil. Les fonctionnalités
-          de compte (profil, clés API, préférences synchronisées) seront
-          annoncées prochainement.
+        <div className="mt-4 flex items-center gap-4">
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "h-16 w-16",
+              },
+            }}
+          />
+          <div>
+            <p className="text-[14px] font-medium text-foreground">
+              {user?.fullName ?? user?.emailAddresses?.[0]?.emailAddress}
+            </p>
+            <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+              {user?.emailAddresses?.[0]?.emailAddress}
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 max-w-2xl text-[13.5px] leading-relaxed text-foreground/80">
+          Gérez votre profil, photo et informations personnelles via le menu
+          du profil (cliquez sur l'avatar ci-dessus).
         </p>
       </section>
 

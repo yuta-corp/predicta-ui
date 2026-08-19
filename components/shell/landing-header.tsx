@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ArrowRight, Menu, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 
 import { Wordmark } from "@/components/shell/wordmark"
 import { Nav, NAV_LINKS } from "@/components/shell/nav"
@@ -61,6 +62,27 @@ export function LandingHeader() {
           <Nav />
         </div>
         <div className="flex items-center gap-1">
+          <SignedOut>
+            <Link
+              href="/sign-in"
+              className="hidden rounded-sm px-2 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground md:block"
+            >
+              Connexion
+            </Link>
+          </SignedOut>
+          <SignedIn>
+            <div className="hidden md:block">
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: "h-8 w-8",
+                    userButtonPopoverCard: "bg-background border border-border",
+                    userButtonPopoverActionButton: "text-foreground hover:bg-accent/50",
+                  },
+                }}
+              />
+            </div>
+          </SignedIn>
           <Link
             href="/map"
             className="group inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:text-lime-ink"
@@ -115,6 +137,32 @@ export function LandingHeader() {
               </ul>
               <div className="my-2 border-t border-border/60" />
               <div className="flex flex-col gap-2 pb-2">
+                <SignedOut>
+                  <Link
+                    href="/sign-in"
+                    className="inline-flex items-center justify-between rounded-sm border border-border px-4 py-3 text-[14px] font-medium text-foreground transition-colors hover:border-foreground/50"
+                  >
+                    Se connecter
+                    <ArrowRight
+                      className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                      aria-hidden
+                    />
+                  </Link>
+                </SignedOut>
+                <SignedIn>
+                  <div className="flex items-center gap-3 rounded-sm border border-border px-4 py-2">
+                    <UserButton
+                      appearance={{
+                        elements: {
+                          avatarBox: "h-8 w-8",
+                          userButtonPopoverCard: "bg-background border border-border",
+                          userButtonPopoverActionButton: "text-foreground hover:bg-accent/50",
+                        },
+                      }}
+                    />
+                    <span className="text-[13px] text-muted-foreground">Mon compte</span>
+                  </div>
+                </SignedIn>
                 <Link
                   href="/map"
                   className="group inline-flex items-center justify-between rounded-sm bg-primary px-4 py-3 text-[14px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
