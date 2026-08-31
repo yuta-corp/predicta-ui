@@ -1,7 +1,6 @@
 import { Geist_Mono, Instrument_Sans } from "next/font/google"
 import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
-import { ClerkProvider } from "@clerk/nextjs"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -49,11 +48,9 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ClerkProvider>
-          <ThemeProvider defaultTheme="light">{children}</ThemeProvider>
-          <CookieConsent />
-          <Analytics />
-        </ClerkProvider>
+        <ThemeProvider defaultTheme="light">{children}</ThemeProvider>
+        <CookieConsent />
+        <Analytics />
       </body>
     </html>
   )

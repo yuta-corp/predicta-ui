@@ -11,16 +11,6 @@ const ACTIONS = [
     action: "open-consent" as const,
   },
   {
-    title: "Exporter mes données",
-    text: "Demander une copie des données liées à vos préférences.",
-    href: "/account#export",
-  },
-  {
-    title: "Supprimer mon compte",
-    text: "Comprendre les conséquences avant de lancer une demande.",
-    href: "/account#delete",
-  },
-  {
     title: "Contact confidentialité",
     text: "Questions ou demandes relatives à vos données.",
     href: "mailto:yuta-mg@proton.me?subject=Confidentialit%C3%A9",
