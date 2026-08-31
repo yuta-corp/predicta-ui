@@ -222,7 +222,7 @@
   animation: veil-out 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
 }
 
-/* De la donnée brute à la ville : la route se dessine, puis le trafic coule. */
+/* Routes vectorielles — dessin + flux de trafic. */
 @keyframes draw-line {
   to {
     stroke-dashoffset: 0;
@@ -246,28 +246,85 @@
 .road-draw {
   stroke-dasharray: 480;
   stroke-dashoffset: 480;
-}
-
-.is-visible .road-draw {
   animation: draw-line 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
 }
 
 .road-flow {
   opacity: 0;
   stroke-dasharray: 10 16;
-}
-
-.is-visible .road-flow {
   animation: dash-flow 1.2s linear 1.9s infinite both;
 }
 
-/* Trafic ralenti (survol de rate) : le flux s'allonge et ralentit. */
+/* Trafic ralenti : le flux s'allonge et ralentit. */
 .road-flow-slow {
   stroke-dasharray: 26 40;
+  animation-duration: 2.6s;
 }
 
-.is-visible .road-flow-slow {
-  animation-duration: 2.6s;
+/* Flux SVG pour les sections explore + transition. */
+@keyframes dash-flow-linear {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -180;
+  }
+}
+
+.animate-dash-flow {
+  animation: dash-flow-linear var(--duration, 6s) linear infinite;
+}
+
+/* Signal parcours — le point qui parcourt la ligne. */
+@keyframes travel-dot {
+  0% {
+    left: 5%;
+  }
+  100% {
+    left: 95%;
+  }
+}
+
+/* Caméra rectangle qui se déplace entre quartiers. */
+@keyframes camera-move {
+  0%, 100% {
+    x: 360;
+    y: 140;
+    opacity: 0;
+  }
+  10%, 90% {
+    opacity: 0.4;
+  }
+  25% {
+    x: 500;
+    y: 240;
+  }
+  50% {
+    x: 280;
+    y: 160;
+  }
+  75% {
+    x: 440;
+    y: 280;
+  }
+}
+
+.animate-camera-move {
+  animation: camera-move 12s ease-in-out infinite;
+}
+
+/* Pulse lent pour les flèches de transition. */
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Indicateur de scroll — chevron qui descend. */
@@ -339,7 +396,10 @@
   .animate-breathe,
   .animate-beat,
   .animate-scroll-cue,
-  .animate-veil-out {
+  .animate-veil-out,
+  .animate-dash-flow,
+  .animate-camera-move,
+  .animate-pulse-slow {
     animation: none;
     opacity: 0;
   }
@@ -350,13 +410,14 @@
   }
   .road-draw {
     stroke-dashoffset: 0;
-  }
-  .is-visible .road-draw,
-  .is-visible .road-flow,
-  .is-visible .road-flow-slow {
     animation: none;
   }
-  .road-flow {
+  .road-flow,
+  .road-flow-slow {
+    opacity: 1;
+    animation: none;
+  }
+  .animate-dash-flow {
     opacity: 1;
   }
 }

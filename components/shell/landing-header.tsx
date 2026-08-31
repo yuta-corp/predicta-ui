@@ -173,16 +173,6 @@ export function LandingHeader() {
                     aria-hidden
                   />
                 </Link>
-                <Link
-                  href="/developers"
-                  className="inline-flex items-center justify-between rounded-sm border border-border px-4 py-3 text-[14px] font-medium text-foreground transition-colors hover:border-foreground/50"
-                >
-                  Construire avec l'API
-                  <ArrowRight
-                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </Link>
               </div>
             </div>
           </motion.nav>

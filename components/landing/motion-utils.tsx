@@ -1,17 +1,19 @@
 "use client"
 
-import { useRef, type ReactNode } from "react"
-import { motion, useScroll } from "motion/react"
+import { useEffect, useRef, type ReactNode } from "react"
+import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 
+import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
 import { cn } from "@/lib/utils"
 
-/** Easing signature de la marque — lent, précis, jamais décoratif. */
-export const EASE = [0.22, 1, 0.36, 1] as const
+initGsap()
+
+/** Easing array — pour compatibilité avec les composants qui importent EASE. */
+export const EASE = [0.16, 1, 0.3, 1] as const
 
 /**
- * Petite étiquette éditoriale — même voix partout : gris, espacée, discrète.
- * La lime reste un SIGNAL (mouvement, données, sélection) ; les étiquettes
- * de section ne sont ni des signaux ni des ornements, elles cadrent.
+ * Kicker — étiquette éditoriale section, grise, espacée, discrète.
  */
 export function Kicker({
   children,
@@ -33,11 +35,7 @@ export function Kicker({
 }
 
 /**
- * Titre éditorial révélé ligne par ligne — la ligne se démasque depuis le bas,
- * comme une route qui se dessine. Un seul passage, léger.
- *
- * Le masque est un clip-path (inset) : aucun calcul de taille, fiable sur
- * toute la page, coupé par MotionConfig en reduced-motion.
+ * LineReveal — titre révélé par clip-path au scroll (GSAP ScrollTrigger).
  */
 export function LineReveal({
   children,
@@ -50,22 +48,41 @@ export function LineReveal({
   delay?: number
   as?: "h1" | "h2" | "h3" | "p" | "div"
 }) {
+  const innerRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el) return
+
+    gsap.fromTo(
+      el,
+      { clipPath: "inset(0 0 100% 0)" },
+      {
+        clipPath: "inset(0 0 0% 0)",
+        duration: 0.9,
+        ease: PREDICTA_EASE,
+        delay,
+        scrollTrigger: {
+          trigger: el,
+          start: "top 88%",
+          once: true,
+        },
+      }
+    )
+  }, [delay])
+
   return (
     <Tag className={cn("block", className)}>
-      <motion.span
-        className="block will-change-[clip-path]"
-        initial={{ clipPath: "inset(0 0 100% 0)" }}
-        whileInView={{ clipPath: "inset(0 0 0% 0)" }}
-        viewport={{ once: true, margin: "-10% 0px" }}
-        transition={{ duration: 0.9, ease: EASE, delay }}
-      >
+      <span ref={innerRef} className="block will-change-[clip-path]">
         {children}
-      </motion.span>
+      </span>
     </Tag>
   )
 }
 
-/** Apparition douce au scroll — pour les blocs secondaires, jamais pour les titres. */
+/**
+ * FadeUp — apparition douce au scroll (GSAP ScrollTrigger).
+ */
 export function FadeUp({
   children,
   className,
@@ -75,30 +92,33 @@ export function FadeUp({
   className?: string
   delay?: number
 }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    gsap.fromTo(
+      el,
+      { opacity: 0, y: 18 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.8,
+        ease: PREDICTA_EASE,
+        delay,
+        scrollTrigger: {
+          trigger: el,
+          start: "top 88%",
+          once: true,
+        },
+      }
+    )
+  }, [delay])
+
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-12% 0px -12% 0px" }}
-      transition={{ duration: 0.8, ease: EASE, delay }}
-    >
+    <div ref={ref} className={className}>
       {children}
-    </motion.div>
+    </div>
   )
 }
-
-/**
- * Progression d'une section dans le viewport (0 = entrée, 1 = sortie).
- * Pilote les effets liés au scroll (sortie du titre du héros, profondeur…).
- */
-export function useSectionProgress() {
-  const ref = useRef<HTMLElement | null>(null)
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  })
-  return { ref, scrollYProgress }
-}
-
-

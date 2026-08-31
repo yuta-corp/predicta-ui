@@ -4,8 +4,6 @@ import { Wordmark } from "@/components/shell/wordmark"
 const NAV_LINKS = [
   { href: "/map", label: "La carte" },
   { href: "/quartiers", label: "Quartiers" },
-  { href: "/developers", label: "Développeurs" },
-  { href: "/developers/explorer", label: "Explorateur GeoJSON" },
   { href: "/status", label: "Statut" },
 ] as const
 
@@ -26,9 +24,8 @@ export function LandingFooter() {
         <div>
           <Wordmark />
           <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-muted-foreground">
-            La carte vivante d'Antananarivo. Le trafic de la ville en temps
-            réel — explorez les quartiers, observez les flux, construisez
-            avec l'API.
+            Le trafic d'Antananarivo en temps réel. Décidez avant de
+            partir.
           </p>
         </div>
         <nav aria-label="Navigation" className="flex flex-col gap-2.5">
