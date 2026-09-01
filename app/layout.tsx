@@ -21,10 +21,71 @@ const fontMono = Geist_Mono({
 
 export const dynamic = "force-dynamic"
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://predicta-ui.vercel.app"
+
 export const metadata: Metadata = {
-  title: "Predicta — The living map of Antananarivo",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Predicta — Trafic en temps réel à Antananarivo",
+    template: "%s | Predicta",
+  },
   description:
-    "Le trafic d'Antananarivo en temps réel. La ville est vivante : explorez les quartiers, observez les flux, construisez avec l'API.",
+    "Voyez les embouteillages d'Antananarivo en temps réel avant de partir. Consultez l'état des routes, choisissez votre itinéraire et gagnez du temps au quotidien.",
+  keywords: [
+    "trafic Antananarivo",
+    "embouteillage Tana",
+    "état routes Antananarivo",
+    "temps réel trafic Madagascar",
+    "prévoir trafic Tana",
+    "itinéraire Antananarivo",
+    "Predicta",
+  ],
+  authors: [{ name: "Predicta" }],
+  creator: "Predicta",
+  publisher: "Predicta",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    locale: "fr_MG",
+    url: SITE_URL,
+    siteName: "Predicta",
+    title: "Predicta — Trafic en temps réel à Antananarivo",
+    description:
+      "Voyez les embouteillages d'Antananarivo en temps réel avant de partir. Consultez l'état des routes et choisissez la meilleure option.",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Predicta — La carte du trafic d'Antananarivo en temps réel",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Predicta — Trafic en temps réel à Antananarivo",
+    description:
+      "Voyez les embouteillages d'Antananarivo en temps réel avant de partir.",
+    images: ["/og.png"],
+  },
+  alternates: {
+    canonical: SITE_URL,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 }
 
 export const viewport: Viewport = {

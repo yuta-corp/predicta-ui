@@ -15,6 +15,8 @@ initGsap()
  * Montre concrètement ce que la carte affiche.
  * GSAP choreography : cards entrent avec stagger + scale,
  * les SVG roads se dessinent au scroll.
+ *
+ * Palette cohérente avec le fond Predicta — pas de dark cards.
  */
 export function CeQueVousVoyez() {
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -133,16 +135,16 @@ export function CeQueVousVoyez() {
         {/* 3 features — stagger + scale + rotation */}
         <div
           ref={cardsRef}
-          className="mt-16 grid gap-8 sm:grid-cols-3"
+          className="mt-16 grid gap-6 sm:grid-cols-3 sm:gap-8"
           style={{ perspective: "1200px" }}
         >
           {FEATURES.map((feature) => (
             <div
               key={feature.title}
               data-card
-              className="group overflow-hidden rounded-md border border-border/60 bg-[#0b0d09] transition-shadow hover:shadow-xl hover:shadow-black/20"
+              className="group overflow-hidden rounded-md border border-border/70 bg-[#F1F1ED] transition-shadow hover:shadow-xl hover:shadow-black/5"
             >
-              {/* Illustration SVG */}
+              {/* Illustration SVG — fond clair, cohérent avec le papier Predicta */}
               <div className="overflow-hidden">{feature.illustration}</div>
               <div className="p-5">
                 <h3 className="text-[15px] font-semibold tracking-tight text-foreground">
@@ -167,25 +169,25 @@ const FEATURES = [
       "Chaque route d'Antananarivo apparaît sur la carte avec son état de trafic actuel.",
     illustration: (
       <svg viewBox="0 0 400 180" className="block w-full" role="img" aria-label="Routes avec trafic">
-        <rect width="400" height="180" fill="#0b0d09" />
+        <rect width="400" height="180" fill="#F1F1ED" />
         <defs>
           <pattern id="fg1" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(226,240,208,0.04)" strokeWidth="0.5" />
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(7,7,7,0.04)" strokeWidth="0.5" />
           </pattern>
         </defs>
         <rect width="400" height="180" fill="url(#fg1)" />
         {/* Routes secondaires */}
-        <path d="M 40 100 C 80 90, 120 80, 160 75" fill="none" stroke="rgba(226,240,208,0.08)" strokeWidth={2} strokeLinecap="round" />
-        <path d="M 240 60 C 280 70, 320 80, 360 90" fill="none" stroke="rgba(226,240,208,0.08)" strokeWidth={2} strokeLinecap="round" />
+        <path d="M 40 100 C 80 90, 120 80, 160 75" fill="none" stroke="rgba(7,7,7,0.08)" strokeWidth={2} strokeLinecap="round" />
+        <path d="M 240 60 C 280 70, 320 80, 360 90" fill="none" stroke="rgba(7,7,7,0.08)" strokeWidth={2} strokeLinecap="round" />
         {/* Route principale — casing */}
-        <path d="M 30 120 C 100 100, 180 60, 260 50 S 340 45, 390 60" fill="none" stroke="rgba(5,7,4,0.85)" strokeWidth={7} strokeLinecap="round" />
+        <path d="M 30 120 C 100 100, 180 60, 260 50 S 340 45, 390 60" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={7} strokeLinecap="round" />
         {/* Route fluide */}
-        <path d="M 30 120 C 100 100, 180 60, 260 50" fill="none" stroke="#9fca69" strokeWidth={4} strokeLinecap="round" className="feature-road" />
+        <path d="M 30 120 C 100 100, 180 60, 260 50" fill="none" stroke="#7fae3f" strokeWidth={4} strokeLinecap="round" className="feature-road" />
         {/* Route congestionnée */}
-        <path d="M 260 50 S 340 45, 390 60" fill="none" stroke="#dd6a4c" strokeWidth={4} strokeLinecap="round" className="feature-road" />
+        <path d="M 260 50 S 340 45, 390 60" fill="none" stroke="#d95f45" strokeWidth={4} strokeLinecap="round" className="feature-road" />
         {/* Points */}
-        <circle cx={140} cy={72} r={3} fill="#9fca69" opacity={0.7} />
-        <circle cx={320} cy={48} r={3} fill="#dd6a4c" opacity={0.7} />
+        <circle cx={140} cy={72} r={3} fill="#7fae3f" opacity={0.7} />
+        <circle cx={320} cy={48} r={3} fill="#d95f45" opacity={0.7} />
       </svg>
     ),
   },
@@ -195,27 +197,27 @@ const FEATURES = [
       "Vert = fluide. Rouge = embouteillé. Vous voyez tout de suite ce qui vous attend.",
     illustration: (
       <svg viewBox="0 0 400 180" className="block w-full" role="img" aria-label="État du trafic">
-        <rect width="400" height="180" fill="#0b0d09" />
+        <rect width="400" height="180" fill="#F1F1ED" />
         <defs>
           <pattern id="fg2" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(226,240,208,0.04)" strokeWidth="0.5" />
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(7,7,7,0.04)" strokeWidth="0.5" />
           </pattern>
         </defs>
         <rect width="400" height="180" fill="url(#fg2)" />
         {/* Légende */}
-        <rect x={30} y={30} width={60} height={5} rx={2.5} fill="#9fca69" />
-        <text x={100} y={36} fill="#9aa892" fontSize={9} fontFamily="var(--font-mono)">fluide</text>
-        <rect x={30} y={48} width={60} height={5} rx={2.5} fill="#e0b25c" />
-        <text x={100} y={54} fill="#9aa892" fontSize={9} fontFamily="var(--font-mono)">ralenti</text>
-        <rect x={30} y={66} width={60} height={5} rx={2.5} fill="#dd6a4c" />
-        <text x={100} y={72} fill="#9aa892" fontSize={9} fontFamily="var(--font-mono)">congestionné</text>
+        <rect x={30} y={30} width={60} height={5} rx={2.5} fill="#7fae3f" />
+        <text x={100} y={36} fill="#6b7a5e" fontSize={9} fontFamily="var(--font-sans)">fluide</text>
+        <rect x={30} y={48} width={60} height={5} rx={2.5} fill="#df9f3a" />
+        <text x={100} y={54} fill="#6b7a5e" fontSize={9} fontFamily="var(--font-sans)">ralenti</text>
+        <rect x={30} y={66} width={60} height={5} rx={2.5} fill="#d95f45" />
+        <text x={100} y={72} fill="#6b7a5e" fontSize={9} fontFamily="var(--font-sans)">congestionné</text>
         {/* Statut route */}
-        <rect x={220} y={24} width={150} height={48} rx={4} fill="rgba(159,202,105,0.08)" stroke="rgba(159,202,105,0.2)" strokeWidth={1} />
-        <text x={295} y={44} textAnchor="middle" fill="#9fca69" fontSize={20} fontFamily="var(--font-mono)" fontWeight="600">0.9</text>
-        <text x={295} y={60} textAnchor="middle" fill="#9aa892" fontSize={7} fontFamily="var(--font-mono)">INDÉPENDANCE · FLUIDE</text>
-        <rect x={220} y={82} width={150} height={48} rx={4} fill="rgba(221,106,76,0.08)" stroke="rgba(221,106,76,0.2)" strokeWidth={1} />
-        <text x={295} y={102} textAnchor="middle" fill="#dd6a4c" fontSize={20} fontFamily="var(--font-mono)" fontWeight="600">0.3</text>
-        <text x={295} y={118} textAnchor="middle" fill="#9aa892" fontSize={7} fontFamily="var(--font-mono)">ANTOHERENANA · BLOQUÉ</text>
+        <rect x={220} y={24} width={150} height={48} rx={4} fill="rgba(127,174,63,0.1)" stroke="rgba(127,174,63,0.25)" strokeWidth={1} />
+        <text x={295} y={44} textAnchor="middle" fill="#5a7a2e" fontSize={20} fontFamily="var(--font-sans)" fontWeight="600">0.9</text>
+        <text x={295} y={60} textAnchor="middle" fill="#6b7a5e" fontSize={7} fontFamily="var(--font-sans)">INDÉPENDANCE · FLUIDE</text>
+        <rect x={220} y={82} width={150} height={48} rx={4} fill="rgba(217,95,69,0.1)" stroke="rgba(217,95,69,0.25)" strokeWidth={1} />
+        <text x={295} y={102} textAnchor="middle" fill="#c44a2e" fontSize={20} fontFamily="var(--font-sans)" fontWeight="600">0.3</text>
+        <text x={295} y={118} textAnchor="middle" fill="#6b7a5e" fontSize={7} fontFamily="var(--font-sans)">ANTOHERENANA · BLOQUÉ</text>
       </svg>
     ),
   },
@@ -225,22 +227,22 @@ const FEATURES = [
       "Cliquez sur une route pour voir son nom, sa vitesse et son état actuel.",
     illustration: (
       <svg viewBox="0 0 400 180" className="block w-full" role="img" aria-label="Informations d'une route">
-        <rect width="400" height="180" fill="#0b0d09" />
+        <rect width="400" height="180" fill="#F1F1ED" />
         <defs>
           <pattern id="fg3" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(226,240,208,0.04)" strokeWidth="0.5" />
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(7,7,7,0.04)" strokeWidth="0.5" />
           </pattern>
         </defs>
         <rect width="400" height="180" fill="url(#fg3)" />
         {/* Route */}
-        <path d="M 30 140 C 100 120, 160 80, 220 60 S 320 30, 380 20" fill="none" stroke="rgba(5,7,4,0.85)" strokeWidth={7} strokeLinecap="round" />
-        <path d="M 30 140 C 100 120, 160 80, 220 60 S 320 30, 380 20" fill="none" stroke="#9fca69" strokeWidth={4} strokeLinecap="round" className="feature-road" />
+        <path d="M 30 140 C 100 120, 160 80, 220 60 S 320 30, 380 20" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={7} strokeLinecap="round" />
+        <path d="M 30 140 C 100 120, 160 80, 220 60 S 320 30, 380 20" fill="none" stroke="#7fae3f" strokeWidth={4} strokeLinecap="round" className="feature-road" />
         {/* Panneau d'info */}
-        <rect x={180} y={80} width={190} height={72} rx={5} fill="#0b0d09" stroke="rgba(226,240,208,0.15)" strokeWidth={1} />
-        <text x={194} y={100} fill="#9fca69" fontSize={9} fontFamily="var(--font-mono)" fontWeight="600">AVENUE DE L'INDÉPENDANCE</text>
-        <text x={194} y={116} fill="#9aa892" fontSize={8} fontFamily="var(--font-mono)">Vitesse : 32 km/h</text>
-        <text x={194} y={130} fill="#9aa892" fontSize={8} fontFamily="var(--font-mono)">État : fluide</text>
-        <text x={194} y={144} fill="#9aa892" fontSize={8} fontFamily="var(--font-mono)">Mis à jour il y a 45 s</text>
+        <rect x={180} y={80} width={190} height={72} rx={5} fill="#F7F7F4" stroke="rgba(7,7,7,0.12)" strokeWidth={1} />
+        <text x={194} y={100} fill="#5a7a2e" fontSize={9} fontFamily="var(--font-sans)" fontWeight="600">AVENUE DE L'INDÉPENDANCE</text>
+        <text x={194} y={116} fill="#6b7a5e" fontSize={8} fontFamily="var(--font-sans)">Vitesse : 32 km/h</text>
+        <text x={194} y={130} fill="#6b7a5e" fontSize={8} fontFamily="var(--font-sans)">État : fluide</text>
+        <text x={194} y={144} fill="#6b7a5e" fontSize={8} fontFamily="var(--font-sans)">Mis à jour il y a 45 s</text>
       </svg>
     ),
   },

@@ -4,7 +4,6 @@ import { Wordmark } from "@/components/shell/wordmark"
 const NAV_LINKS = [
   { href: "/map", label: "La carte" },
   { href: "/quartiers", label: "Quartiers" },
-  { href: "/status", label: "Statut" },
 ] as const
 
 const LEGAL_LINKS = [

@@ -159,10 +159,15 @@ export function Hero() {
         className="pointer-events-none absolute inset-0 z-10 bg-background"
       />
 
-      {/* Gradient de lisibilité — léger, la carte reste visible en haut */}
+      {/* Gradient de lisibilité — la carte reste visible en haut, le texte se lit partout */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[24rem] bg-gradient-to-t from-background via-background/50 to-transparent"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20 backdrop-blur-[2px] sm:backdrop-blur-[1px]"
+      />
+      {/* Sous-couche plus opaque en bas pour le texte — mobile especially */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/80 to-transparent sm:h-40"
       />
 
       {/* Bloc texte */}
