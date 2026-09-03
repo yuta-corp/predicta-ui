@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, RefObject } from "react"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
@@ -9,7 +9,7 @@ initGsap()
 
 interface ScrollTriggerAnimatedSVGProps {
   /** Reference to the hero section (or any trigger element) */
-  triggerRef: RefObject<HTMLElement>
+  triggerRef: RefObject<HTMLElement | null>
   /** Optional: className for the SVG wrapper */
   className?: string
 }
@@ -92,12 +92,18 @@ export function ScrollTriggerAnimatedSVG({
           paths,
           {
             strokeDashoffset: 0,
-            duration: 1, // this duration is relative to the scroll progress because of scrub: true
-            ease: "none",
+            duration: 0.8, // slightly faster relative to scroll progress
+            ease: PREDICTA_EASE,
+            stagger: {
+              amount: 0.3, // total delay spread over all paths
+              from: "random",
+              grid: "auto",
+              ease: "power1.inOut",
+            },
           },
           0
         )
-      }, svgRef) // bind context to the svgRef element for cleanup
+      }, svgRef) as any // bind context to the svgRef element for cleanup
     }, 100)
 
     let gsapCleanup: (() => void) | null = null
@@ -107,7 +113,7 @@ export function ScrollTriggerAnimatedSVG({
       clearTimeout(timeoutId)
       gsapCleanup?.()
     }
-  }, [trigger, svgLoaded, loadError])
+  }, [triggerRef, svgLoaded, loadError])
 
   if (loadError) {
     // Optionally render a fallback or nothing

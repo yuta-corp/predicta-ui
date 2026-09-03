@@ -36,8 +36,15 @@ export function EnhancedCityMap({
       const map = getLiveMap();
       if (!map) return;
 
-      // 1. Smoother transitions: set default easing if available
-      if (typeof (map as any).setDefaultEasing === "function") {
+      // Get lime-ink color from CSS variable
+      const limeInk = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-lime-ink')
+        .trim();
+      const highlightColor = limeInk || '#00ffff';
+
+      // 1. Smoother transitions: set default easing if available and not reduced motion
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (typeof (map as any).setDefaultEasing === "function" && !reduced) {
         (map as any).setDefaultEasing("cubic-bezier(0.25, 0.46, 0.45, 0.94)");
       }
 
@@ -56,18 +63,18 @@ export function EnhancedCityMap({
               "line-join": "round",
             },
             paint: {
-              "line-color": "#00ffff", // cyan highlight
+              "line-color": highlightColor,
               "line-width": [
                 "interpolate",
                 ["linear"],
                 ["zoom"],
-                10, 4,
-                14, 7
+                10, 3,
+                14, 5
               ],
               "line-opacity": [
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
-                0.7,
+                0.5,
                 0
               ],
             },
@@ -86,18 +93,18 @@ export function EnhancedCityMap({
                   "line-join": "round",
                 },
                 paint: {
-                  "line-color": "#00ffff",
+                  "line-color": highlightColor,
                   "line-width": [
                     "interpolate",
                     ["linear"],
                     ["zoom"],
-                    10, 4,
-                    14, 7
+                    10, 3,
+                    14, 5
                   ],
                   "line-opacity": [
                     "case",
                     ["boolean", ["feature-state", "hover"], false],
-                    0.7,
+                    0.5,
                     0
                   ],
                 },

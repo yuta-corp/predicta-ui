@@ -154,7 +154,7 @@ export function Hero() {
       </div>
 
       {/* SVG Contours animés au scroll */}
-      <ScrollTriggerAnimatedSVG triggerRef={sectionRef} className="z-[9]" />
+      <ScrollTriggerAnimatedSVG triggerRef={sectionRef} className="text-lime-ink/10" />
 
       {/* Voile — se dissout à l'entrée */}
       <div
