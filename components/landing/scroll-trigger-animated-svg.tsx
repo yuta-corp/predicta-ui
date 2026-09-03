@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, RefObject } from "react"
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
 
 initGsap()
@@ -65,7 +64,7 @@ export function ScrollTriggerAnimatedSVG({
       if (paths.length === 0) return
 
       // Prepare GSAP context and store its cleanup function
-      gsapCleanup = gsap.context(() => {
+      const ctx = gsap.context(() => {
         // Calculate the total length of each path and set up stroke-dasharray and stroke-dashoffset
         paths.forEach((path) => {
           const length = (path as SVGPathElement).getTotalLength()
@@ -103,7 +102,8 @@ export function ScrollTriggerAnimatedSVG({
           },
           0
         )
-      }, svgRef) as any // bind context to the svgRef element for cleanup
+      }, svgRef) // bind context to the svgRef element for cleanup
+      gsapCleanup = () => ctx.revert()
     }, 100)
 
     let gsapCleanup: (() => void) | null = null

@@ -322,6 +322,18 @@ export interface MapView {
   zoom: number
 }
 
+interface UserLocation {
+  latitude: number
+  longitude: number
+  accuracy?: number
+}
+
+interface UserLocation {
+  latitude: number
+  longitude: number
+  accuracy?: number
+}
+
 interface MapContextValue {
   view: MapView | null
 }
@@ -383,6 +395,7 @@ export function CityMap({
 
   const [pulse, setPulse] = useState<{ id: number; x: number; y: number } | null>(null)
   const [view, setView] = useState<MapView | null>(null)
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
 
   useEffect(() => {
     const container = containerRef.current
@@ -475,6 +488,30 @@ export function CityMap({
             refreshTimer = setInterval(() => {
               if (map.getSource("traffic")) map.refreshTiles("traffic")
             }, TILE_REFRESH_MS)
+          }
+          // Add user location source and layer
+          if (!map.getSource("user-location")) {
+            map.addSource("user-location", {
+              type: "geojson",
+              data: {
+                type: "FeatureCollection",
+                features: [],
+              },
+            });
+          }
+
+          if (!map.getLayer("user-location-layer")) {
+            map.addLayer({
+              id: "user-location-layer",
+              type: "circle",
+              source: "user-location",
+              paint: {
+                "circle-color": "#007cbf",
+                "circle-radius": 8,
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#ffffff",
+              },
+            });
           }
         })
 
@@ -648,6 +685,59 @@ export function CityMap({
       cleanup?.()
     }
   }, [interactive, onReady, drift, forceDark, forceLight, showControls])
+
+  // Geolocation: request permission and update user location
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      console.warn("Geolocation is not supported by this browser.")
+      return
+    }
+
+    const handleSuccess = (position: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = position.coords
+      setUserLocation({ latitude, longitude, accuracy })
+    }
+
+    const handleError = (error: GeolocationPositionError) => {
+      console.warn(`Error getting user location: ${error.message}`)
+    }
+
+    // Get initial position
+    navigator.geolocation.getCurrentPosition(handleSuccess, handleError)
+
+    // Watch for changes
+    const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 5000,
+    })
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+    }
+  }, [])
+  // Update user location on the map
+  useEffect(() => {
+    const map = getLiveMap()
+    if (!map || !userLocation) return
+
+    const source = map.getSource("user-location")
+    if (source && source.type === "geojson") {
+      (source as GeoJSONSource).setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: [userLocation.longitude, userLocation.latitude],
+            },
+          },
+        ],
+      })
+    }
+  }, [userLocation])
 
   return (
     <MapContext.Provider value={{ view }}>

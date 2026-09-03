@@ -5,7 +5,6 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { useEffect, useRef } from "react"
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
 
 import { Wordmark } from "@/components/shell/wordmark"
 import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
