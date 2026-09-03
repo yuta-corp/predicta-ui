@@ -1,0 +1,31 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simplified Tana road network contours -->
+  <!-- Center point (Analakely area) -->
+  <circle cx="100" cy="100" r="2" fill="currentColor"/>
+
+  <!-- Main radial roads (simplified as lines from center) -->
+  <!-- North: Towards Antsahavola -->
+  <line x1="100" y1="30" x2="100" y2="70" stroke="currentColor" stroke-width="1.5"/>
+  <!-- Northeast: Towards Ambatobe -->
+  <line x1="100" y1="40" x2="140" y2="60" stroke="currentColor" stroke-width="1.5"/>
+  <!-- East: Towards 67 Ha / Mahamasina -->
+  <line x1="100" y1="50" x2="150" y2="100" stroke="currentColor" stroke-width="1.5"/>
+  <!-- Southeast: Towards Anosy -->
+  <line x1="100" y1="60" x2="140" y2="140" stroke="currentColor" stroke-width="1.5"/>
+  <!-- South: Towards Anosy -->
+  <line x1="100" y1="130" x2="100" y2="170" stroke="currentColor" stroke-width="1.5"/>
+  <!-- Southwest: Towards Isotry -->
+  <line x1="100" y1="140" x2="60" y2="140" stroke="currentColor" stroke-width="1.5"/>
+  <!-- West: Towards Soarano -->
+  <line x1="100" y1="150" x2="50" y2="100" stroke="currentColor" stroke-width="1.5"/>
+  <!-- Northwest: Towards Analakely hills -->
+  <line x1="100" y1="100" x2="60" y2="60" stroke="currentColor" stroke-width="1.5"/>
+
+  <!-- Some circular/concentric elements to represent ring roads or major intersections -->
+  <circle cx="100" cy="100" r="25" fill="none" stroke="currentColor" stroke-width="0.8"/>
+  <circle cx="100" cy="100" r="45" fill="none" stroke="currentColor" stroke-width="0.8"/>
+
+  <!-- Additional connector roads to make it more recognizable -->
+  <path d="M 70 100 L 130 100" stroke="currentColor" stroke-width="0.8"/>
+  <path d="M 100 70 L 100 130" stroke="currentColor" stroke-width="0.8"/>
+</svg>
