@@ -9,6 +9,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger"
 
 import { Wordmark } from "@/components/shell/wordmark"
 import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
+import { ScrollTriggerAnimatedSVG } from "@/components/landing/scroll-trigger-animated-svg"
 
 initGsap()
 
@@ -151,6 +152,9 @@ export function Hero() {
           className="h-full w-full"
         />
       </div>
+
+      {/* SVG Contours animés au scroll */}
+      <ScrollTriggerAnimatedSVG triggerRef={sectionRef} className="z-[9]" />
 
       {/* Voile — se dissout à l'entrée */}
       <div
