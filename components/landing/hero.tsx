@@ -13,8 +13,8 @@ import { ScrollTriggerAnimatedSVG } from "@/components/landing/scroll-trigger-an
 
 initGsap()
 
-const CityMap = dynamic(
-  () => import("@/components/map/city-map").then((m) => m.CityMap),
+const EnhancedCityMap = dynamic(
+  () => import("@/components/map/enhanced-city-map").then((m) => m.EnhancedCityMap),
   { ssr: false }
 )
 
@@ -144,7 +144,7 @@ export function Hero() {
     >
       {/* La carte — le produit, visible */}
       <div data-map className="absolute inset-0 z-0 origin-center">
-        <CityMap
+        <EnhancedCityMap
           forceLight
           drift
           interactive={false}
