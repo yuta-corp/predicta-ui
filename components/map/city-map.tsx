@@ -23,6 +23,7 @@ import type {
 import "maplibre-gl/dist/maplibre-gl.css"
 
 import { trafficEngine, type SelectedRoute } from "@/lib/traffic/engine"
+import { USER_LOCATION_PULSE_LAYERS } from "@/lib/map/user-location"
 import { buildGraticule } from "@/lib/map/graticule"
 import { quartiersByLowerName } from "@/lib/data/quartiers"
 import type { TrafficFeature, TrafficFeatureCollection } from "@/lib/types/traffic"
@@ -227,16 +228,40 @@ function syncHover(
 
 /** Couches « vous êtes ici » : cercle de précision + point de localisation.
  * Toujours au-dessus de tout ; vides tant que l'utilisateur n'a pas activé
- * la géolocalisation (bouton dédié, pas de demande automatique). */
+ * la géolocalisation (bouton dédié, pas de demande automatique).
+ *
+ * Deux anneaux d'ondulation (façon Instagram/WhatsApp « live »), décalés
+ * d'une demi-période par startUserLocationPulse : ils s'étirent depuis le
+ * point puis s'estompent, en boucle, sous le point lui-même. */
 function userLocationLayers(isDark: boolean): LayerSpecification[] {
   const dot = isDark ? "#c0fe71" : "#9ccf3c"
   const halo = isDark ? "#0b0d09" : "#ffffff"
+  const pulse = isDark ? "rgba(192, 254, 113, 0.75)" : "rgba(156, 207, 60, 0.7)"
   const accuracy = isDark
     ? "rgba(192, 254, 113, 0.13)"
     : "rgba(156, 207, 60, 0.16)"
   const accuracyOutline = isDark
     ? "rgba(192, 254, 113, 0.4)"
     : "rgba(156, 207, 60, 0.45)"
+  const pulseLayers: LayerSpecification[] = USER_LOCATION_PULSE_LAYERS.map(
+    (id) => ({
+      id,
+      type: "circle",
+      source: "user-location",
+      filter: ["==", ["geometry-type"], "Point"],
+      // Remplissage transparent : seul le contour (anneau) est dessiné.
+      // L'animation pilote le rayon et circle-stroke-opacity (circle-opacity
+      // ne fond que le remplissage dans MapLibre) ; contour invisible tant
+      // que la boucle ne tourne pas.
+      paint: {
+        "circle-color": "rgba(0, 0, 0, 0)",
+        "circle-radius": 14,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": pulse,
+        "circle-stroke-opacity": 0,
+      },
+    })
+  )
   return [
     {
       id: "user-location-accuracy",
@@ -252,6 +277,7 @@ function userLocationLayers(isDark: boolean): LayerSpecification[] {
       filter: ["==", ["geometry-type"], "Polygon"],
       paint: { "line-color": accuracyOutline, "line-width": 1 },
     },
+    ...pulseLayers,
     {
       id: "user-location-dot",
       type: "circle",

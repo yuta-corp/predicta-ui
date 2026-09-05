@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useReducer, useRef, useState } from "react"
-import { LocateFixedIcon, LocateIcon } from "lucide-react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { getLiveMap, subscribeLiveMap } from "@/components/map/city-map"
-import { updateUserLocationSource } from "@/lib/map/user-location"
+import {
+  startUserLocationPulse,
+  updateUserLocationSource,
+} from "@/lib/map/user-location"
 import { haversineKm } from "@/lib/geo"
-import { cn } from "@/lib/utils"
 
 /** Distance minimale de déplacement (m) avant de recentrer la caméra. */
 const FOLLOW_THRESHOLD_M = 30
@@ -25,9 +26,11 @@ function reducedMotion(): boolean {
 }
 
 /**
- * Contrôle de géolocalisation — la position n'est demandée qu'au clic,
- * jamais au chargement de la page. Une fois activée, la position est
- * suivie dans le navigateur et affichée sur la carte (point + précision).
+ * Géolocalisation automatique — aucun bouton : dès que la carte est prête,
+ * le navigateur demande la permission, puis le point + l'ondulation « live »
+ * apparaissent à la position de l'utilisateur et la caméra suit ses
+ * déplacements. Refus et erreurs s'affichent en bulle transitoire, en
+ * français, sans aucun message technique.
  */
 export function GeolocationControl() {
   // Se rend quand l'instance maplibre arrive (ou part) : on l'interroge à ce
@@ -37,11 +40,13 @@ export function GeolocationControl() {
   const map = getLiveMap()
 
   const [status, setStatus] = useState<"idle" | "locating" | "active">("idle")
-  const [following, setFollowing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
   const watchIdRef = useRef<number | null>(null)
-  const followRef = useRef(false)
+  // Suivi toujours actif : la caméra recentre sur l'utilisateur à chaque
+  // déplacement significatif. Pas de bouton pour l'arrêter — la carte reste
+  // libre d'être explorée entre deux déplacements.
+  const followRef = useRef(true)
   const lastRecenterRef = useRef<{ lat: number; lon: number } | null>(null)
   const lastPositionRef = useRef<{
     latitude: number
@@ -49,12 +54,14 @@ export function GeolocationControl() {
     accuracy?: number
   } | null>(null)
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // La demande automatique n'a lieu qu'une fois par session de page.
+  const requestedRef = useRef(false)
 
-  const showMessage = (text: string) => {
+  const showMessage = useCallback((text: string) => {
     setMessage(text)
     if (messageTimerRef.current) clearTimeout(messageTimerRef.current)
     messageTimerRef.current = setTimeout(() => setMessage(null), 6000)
-  }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -80,8 +87,16 @@ export function GeolocationControl() {
     }
   }, [map])
 
+  // Ondulation « live » façon Instagram autour du point, tant qu'une position
+  // est affichée. L'animation reprend seule après un changement de thème
+  // (le style est reconstruit, la boucle attend les nouvelles couches).
+  useEffect(() => {
+    if (!map || status !== "active") return
+    return startUserLocationPulse(map)
+  }, [map, status])
+
   /** Applique un fix : dessine la position, recentre la caméra si suivi. */
-  const applyFix = (coords: GeolocationCoordinates) => {
+  const applyFix = useCallback((coords: GeolocationCoordinates) => {
     const position = {
       latitude: coords.latitude,
       longitude: coords.longitude,
@@ -124,10 +139,10 @@ export function GeolocationControl() {
         })
       }
     }
-  }
+  }, [])
 
   /** Active la géolocalisation (permission demandée au navigateur). */
-  const enable = () => {
+  const enable = useCallback(() => {
     if (!("geolocation" in navigator)) {
       showMessage("La géolocalisation n'est pas disponible sur cet appareil.")
       return
@@ -138,7 +153,6 @@ export function GeolocationControl() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         applyFix(pos.coords)
-        setFollowing(true)
         setStatus("active")
         // Suivi continu : le point suit les déplacements tant que la carte
         // est ouverte. Les erreurs ponctuelles du watch ne coupent pas le suivi.
@@ -151,50 +165,35 @@ export function GeolocationControl() {
         }
       },
       (err) => {
-        followRef.current = false
-        setFollowing(false)
         setStatus("idle")
         showMessage(ERROR_MESSAGES[err.code] ?? DEFAULT_ERROR)
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 }
     )
-  }
+  }, [applyFix, showMessage])
 
-  const onClick = () => {
-    if (status === "locating") return
-    if (status === "active" && following) {
-      // Clic suivant : on arrête de suivre, le point reste affiché.
-      followRef.current = false
-      setFollowing(false)
-      return
-    }
-    if (status === "active") {
-      // Le point est déjà affiché : on recentre et on resuit.
-      followRef.current = true
-      lastRecenterRef.current = null
-      setFollowing(true)
-      navigator.geolocation.getCurrentPosition(
-        (pos) => applyFix(pos.coords),
-        () => showMessage("Votre position n'a pas pu être déterminée. Réessayez.")
-      )
-      return
-    }
+  // Demande automatique : dès que la carte est prête, la position est
+  // demandée au navigateur — aucune interaction requise.
+  useEffect(() => {
+    if (!map || requestedRef.current) return
+    requestedRef.current = true
     enable()
-  }
+  }, [map, enable])
 
-  // Carte pas encore prête : comme les autres contrôles, on attend la vue.
+  // Carte pas encore prête : la demande attend l'instance maplibre.
   if (!map) return null
-
-  const label =
-    status === "idle"
-      ? "Afficher ma position sur la carte"
-      : following
-        ? "Arrêter de suivre ma position"
-        : "Recentrer sur ma position"
 
   return (
     <div className="relative">
-      {message && (
+      {status === "locating" && (
+        <div
+          role="status"
+          className="absolute bottom-12 right-0 z-50 w-56 animate-rise rounded-md border border-border bg-popover px-3 py-2 text-[12px] leading-snug text-popover-foreground shadow-[0_16px_48px_rgba(30,40,20,0.18)]"
+        >
+          Recherche de votre position…
+        </div>
+      )}
+      {message && status !== "locating" && (
         <div
           role="status"
           className="absolute bottom-12 right-0 z-50 w-64 animate-rise rounded-md border border-border bg-popover px-3 py-2 text-[12px] leading-snug text-popover-foreground shadow-[0_16px_48px_rgba(30,40,20,0.18)]"
@@ -202,25 +201,6 @@ export function GeolocationControl() {
           {message}
         </div>
       )}
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={status === "locating"}
-        title={label}
-        aria-label={label}
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
-          following
-            ? "border-primary/60 bg-primary/20 text-primary"
-            : "border-border/80 bg-background/70 text-muted-foreground backdrop-blur-sm hover:bg-background hover:text-foreground"
-        )}
-      >
-        {following ? (
-          <LocateFixedIcon className="h-4 w-4" aria-hidden />
-        ) : (
-          <LocateIcon className="h-4 w-4" aria-hidden />
-        )}
-      </button>
     </div>
   )
 }
