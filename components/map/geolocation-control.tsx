@@ -1,15 +1,23 @@
 "use client"
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react"
+import { toast } from "sonner"
 import { getLiveMap, subscribeLiveMap } from "@/components/map/city-map"
 import {
   startUserLocationPulse,
   updateUserLocationSource,
 } from "@/lib/map/user-location"
+import { createPositionFilter } from "@/lib/map/position-filter"
 import { haversineKm } from "@/lib/geo"
 
 /** Distance minimale de déplacement (m) avant de recentrer la caméra. */
 const FOLLOW_THRESHOLD_M = 30
+
+/**
+ * Tant que l'utilisateur interagit avec la carte (drag, zoom…), la caméra ne
+ * se recentre pas sur lui — la carte reste libre d'être explorée.
+ */
+const RECENTER_PAUSE_MS = 8_000
 
 /** Messages d'erreur humains, par code GeolocationPositionError. */
 const ERROR_MESSAGES: Record<number, string> = {
@@ -29,8 +37,10 @@ function reducedMotion(): boolean {
  * Géolocalisation automatique — aucun bouton : dès que la carte est prête,
  * le navigateur demande la permission, puis le point + l'ondulation « live »
  * apparaissent à la position de l'utilisateur et la caméra suit ses
- * déplacements. Refus et erreurs s'affichent en bulle transitoire, en
- * français, sans aucun message technique.
+ * déplacements. Refus et erreurs s'affichent en toast (sonner), en français,
+ * sans aucun message technique.
+ *
+ * Le composant ne rend rien : il ne fait que piloter la carte et les toasts.
  */
 export function GeolocationControl() {
   // Se rend quand l'instance maplibre arrive (ou part) : on l'interroge à ce
@@ -40,7 +50,6 @@ export function GeolocationControl() {
   const map = getLiveMap()
 
   const [status, setStatus] = useState<"idle" | "locating" | "active">("idle")
-  const [message, setMessage] = useState<string | null>(null)
 
   const watchIdRef = useRef<number | null>(null)
   // Suivi toujours actif : la caméra recentre sur l'utilisateur à chaque
@@ -53,15 +62,13 @@ export function GeolocationControl() {
     longitude: number
     accuracy?: number
   } | null>(null)
-  const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Filtre anti-tremblement : le point n'est redessiné que sur un fix
+  // significatif (déplacement réel, précision nettement meilleure, ou
+  // rassissement), pas à chaque callback brut de watchPosition.
+  const filterRef = useRef(createPositionFilter())
+  const lastInteractionRef = useRef(0)
   // La demande automatique n'a lieu qu'une fois par session de page.
   const requestedRef = useRef(false)
-
-  const showMessage = useCallback((text: string) => {
-    setMessage(text)
-    if (messageTimerRef.current) clearTimeout(messageTimerRef.current)
-    messageTimerRef.current = setTimeout(() => setMessage(null), 6000)
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -69,7 +76,6 @@ export function GeolocationControl() {
         navigator.geolocation.clearWatch(watchIdRef.current)
         watchIdRef.current = null
       }
-      if (messageTimerRef.current) clearTimeout(messageTimerRef.current)
     }
   }, [])
 
@@ -95,12 +101,40 @@ export function GeolocationControl() {
     return startUserLocationPulse(map)
   }, [map, status])
 
-  /** Applique un fix : dessine la position, recentre la caméra si suivi. */
+  // Interaction avec la carte → la caméra ne se recentre pas pendant que
+  // l'utilisateur explore (mêmes événements que la dérive du héros).
+  useEffect(() => {
+    if (!map) return
+    const markInteraction = () => {
+      lastInteractionRef.current = Date.now()
+    }
+    map.on("mousedown", markInteraction)
+    map.on("wheel", markInteraction)
+    map.on("touchstart", markInteraction)
+    map.on("dragstart", markInteraction)
+    return () => {
+      map.off("mousedown", markInteraction)
+      map.off("wheel", markInteraction)
+      map.off("touchstart", markInteraction)
+      map.off("dragstart", markInteraction)
+    }
+  }, [map])
+
+  /** Applique un fix filtré : dessine la position, recentre la caméra si suivi. */
   const applyFix = useCallback((coords: GeolocationCoordinates) => {
-    const position = {
+    const committed = filterRef.current.next({
       latitude: coords.latitude,
       longitude: coords.longitude,
       accuracy: coords.accuracy,
+      timestamp: Date.now(),
+    })
+    // Fix trop proche / pas assez précis : le point affiché ne bouge pas.
+    if (!committed) return
+
+    const position = {
+      latitude: committed.latitude,
+      longitude: committed.longitude,
+      accuracy: committed.accuracy,
     }
     lastPositionRef.current = position
     const live = getLiveMap()
@@ -108,30 +142,19 @@ export function GeolocationControl() {
 
     if (!followRef.current || !live) return
     const last = lastRecenterRef.current
-    if (!last) {
-      // Premier fix : on se rend sur la position, zoom adapté à la précision.
-      lastRecenterRef.current = { lat: position.latitude, lon: position.longitude }
-      const zoom =
-        coords.accuracy > 500 ? 13 : coords.accuracy > 100 ? 14 : 15
+    const recenter = (zoom?: number) => {
+      if (Date.now() - lastInteractionRef.current < RECENTER_PAUSE_MS) return
       if (reducedMotion()) {
-        live.jumpTo({ center: [position.longitude, position.latitude], zoom })
-      } else {
+        live.jumpTo({
+          center: [position.longitude, position.latitude],
+          ...(zoom !== undefined ? { zoom } : {}),
+        })
+      } else if (zoom !== undefined) {
         live.flyTo({
           center: [position.longitude, position.latitude],
           zoom,
           duration: 1400,
         })
-      }
-      return
-    }
-    const movedKm = haversineKm(
-      [last.lon, last.lat],
-      [position.longitude, position.latitude]
-    )
-    if (movedKm > FOLLOW_THRESHOLD_M / 1000) {
-      lastRecenterRef.current = { lat: position.latitude, lon: position.longitude }
-      if (reducedMotion()) {
-        live.jumpTo({ center: [position.longitude, position.latitude] })
       } else {
         live.easeTo({
           center: [position.longitude, position.latitude],
@@ -139,19 +162,44 @@ export function GeolocationControl() {
         })
       }
     }
+    if (!last) {
+      // Premier fix : on se rend sur la position, zoom adapté à la précision.
+      lastRecenterRef.current = {
+        lat: position.latitude,
+        lon: position.longitude,
+      }
+      const zoom =
+        position.accuracy > 500 ? 13 : position.accuracy > 100 ? 14 : 15
+      recenter(zoom)
+      return
+    }
+    const movedKm = haversineKm(
+      [last.lon, last.lat],
+      [position.longitude, position.latitude]
+    )
+    if (movedKm > FOLLOW_THRESHOLD_M / 1000) {
+      lastRecenterRef.current = {
+        lat: position.latitude,
+        lon: position.longitude,
+      }
+      recenter()
+    }
   }, [])
 
   /** Active la géolocalisation (permission demandée au navigateur). */
   const enable = useCallback(() => {
     if (!("geolocation" in navigator)) {
-      showMessage("La géolocalisation n'est pas disponible sur cet appareil.")
+      toast.error("La géolocalisation n'est pas disponible sur cet appareil.")
       return
     }
     setStatus("locating")
+    const loadingToastId = toast.loading("Recherche de votre position…")
     followRef.current = true
     lastRecenterRef.current = null
+    filterRef.current.reset()
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        toast.dismiss(loadingToastId)
         applyFix(pos.coords)
         setStatus("active")
         // Suivi continu : le point suit les déplacements tant que la carte
@@ -160,17 +208,20 @@ export function GeolocationControl() {
           watchIdRef.current = navigator.geolocation.watchPosition(
             (p) => applyFix(p.coords),
             () => {},
-            { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }
           )
         }
       },
       (err) => {
+        toast.dismiss(loadingToastId)
         setStatus("idle")
-        showMessage(ERROR_MESSAGES[err.code] ?? DEFAULT_ERROR)
+        toast.error(ERROR_MESSAGES[err.code] ?? DEFAULT_ERROR, {
+          duration: 6000,
+        })
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 }
     )
-  }, [applyFix, showMessage])
+  }, [applyFix])
 
   // Demande automatique : dès que la carte est prête, la position est
   // demandée au navigateur — aucune interaction requise.
@@ -180,27 +231,6 @@ export function GeolocationControl() {
     enable()
   }, [map, enable])
 
-  // Carte pas encore prête : la demande attend l'instance maplibre.
-  if (!map) return null
-
-  return (
-    <div className="relative">
-      {status === "locating" && (
-        <div
-          role="status"
-          className="absolute bottom-12 right-0 z-50 w-56 animate-rise rounded-md border border-border bg-popover px-3 py-2 text-[12px] leading-snug text-popover-foreground shadow-[0_16px_48px_rgba(30,40,20,0.18)]"
-        >
-          Recherche de votre position…
-        </div>
-      )}
-      {message && status !== "locating" && (
-        <div
-          role="status"
-          className="absolute bottom-12 right-0 z-50 w-64 animate-rise rounded-md border border-border bg-popover px-3 py-2 text-[12px] leading-snug text-popover-foreground shadow-[0_16px_48px_rgba(30,40,20,0.18)]"
-        >
-          {message}
-        </div>
-      )}
-    </div>
-  )
+  // Aucun rendu : le contrôle ne vit que par la carte et les toasts.
+  return null
 }
