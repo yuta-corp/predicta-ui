@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 import { CookieConsent } from "@/components/consent/cookie-consent"
 import { cn } from "@/lib/utils"
 
@@ -109,7 +110,10 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider defaultTheme="light">{children}</ThemeProvider>
+        <ThemeProvider defaultTheme="light">
+          {children}
+          <Toaster />
+        </ThemeProvider>
         <CookieConsent />
         <Analytics />
       </body>

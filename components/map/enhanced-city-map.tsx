@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapLibreMap, MapMouseEvent, MapGeoJSONFeature } from "maplibre-gl";
+import type { MapMouseEvent, MapGeoJSONFeature } from "maplibre-gl";
 import { CityMap } from "./city-map";
 import { getLiveMap } from "./city-map";
-
-interface EnhancedCityMapProps extends React.ComponentPropsWithoutRef<typeof CityMap> {}
 
 /**
  * EnhancedCityMap wraps CityMap to add:
@@ -23,7 +21,7 @@ export function EnhancedCityMap({
   forceLight = false,
   showControls = true,
   ...props
-}: EnhancedCityMapProps) {
+}: React.ComponentPropsWithoutRef<typeof CityMap>) {
   const hoverFeatureIdRef = useRef<string | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +42,8 @@ export function EnhancedCityMap({
 
       // 1. Smoother transitions: set default easing if available and not reduced motion
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (typeof (map as any).setDefaultEasing === "function" && !reduced) {
-        (map as any).setDefaultEasing("cubic-bezier(0.25, 0.46, 0.45, 0.94)");
+      if ('setDefaultEasing' in map && typeof map.setDefaultEasing === "function" && !reduced) {
+        map.setDefaultEasing("cubic-bezier(0.25, 0.46, 0.45, 0.94)");
       }
 
       // 2. Add a hover highlight layer if not exists
@@ -216,7 +214,7 @@ export function EnhancedCityMap({
       cleanupWait?.();
       cleanupRef.current?.();
     };
-  }, [interactive, onReady, drift, forceDark, forceLight, showControls]);
+  }, [interactive, onReady, drift, forceDark, forceLight, showControls, error]);
 
   // Error boundary: if CityMap throws during render, we catch and show fallback.
   if (error) {
@@ -230,19 +228,22 @@ export function EnhancedCityMap({
     );
   }
 
+  // Render the map normally - errors will be caught by the try/catch below
+  const mapElement = (
+    <CityMap
+      className={className}
+      interactive={interactive}
+      onReady={onReady}
+      drift={drift}
+      forceDark={forceDark}
+      forceLight={forceLight}
+      showControls={showControls}
+      {...props}
+    />
+  );
+
   try {
-    return (
-      <CityMap
-        className={className}
-        interactive={interactive}
-        onReady={onReady}
-        drift={drift}
-        forceDark={forceDark}
-        forceLight={forceLight}
-        showControls={showControls}
-        {...props}
-      />
-    );
+    return mapElement;
   } catch (err) {
     setError(err instanceof Error ? err.message : "Unknown error");
     return (

@@ -5,7 +5,7 @@ export default function PrivacyPage() {
     <DocumentLayout
       eyebrow="Legal"
       title="Politique de confidentialité"
-      intro="Dernière mise à jour : août 2026."
+      intro="Dernière mise à jour : septembre 2026."
     >
       <Section title="1. Responsable du traitement">
         <p>
@@ -21,6 +21,11 @@ export default function PrivacyPage() {
           fourni par l'API Predicta (données OpenStreetMap, © OSM
           contributors). L'application ne collecte pas de localisation
           utilisateur et n'exige aucun compte pour consulter la carte.
+        </p>
+        <p className="mt-3">
+          Si vous activez la géolocalisation sur la carte, votre position est
+          traitée uniquement dans votre navigateur pour placer le point sur la
+          carte : elle n'est jamais transmise ni stockée par Predicta.
         </p>
         <p className="mt-3">
           Les données éventuellement traitées sont limitées à celles que vous

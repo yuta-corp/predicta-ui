@@ -23,6 +23,7 @@ import type {
 import "maplibre-gl/dist/maplibre-gl.css"
 
 import { trafficEngine, type SelectedRoute } from "@/lib/traffic/engine"
+import { USER_LOCATION_PULSE_LAYERS } from "@/lib/map/user-location"
 import { buildGraticule } from "@/lib/map/graticule"
 import { quartiersByLowerName } from "@/lib/data/quartiers"
 import type { TrafficFeature, TrafficFeatureCollection } from "@/lib/types/traffic"
@@ -120,6 +121,7 @@ function predictaSources(): Record<string, SourceSpecification> {
     },
     selection: { type: "geojson", data: EMPTY_FC },
     hover: { type: "geojson", data: EMPTY_FC },
+    "user-location": { type: "geojson", data: EMPTY_FC },
   }
 }
 
@@ -224,6 +226,73 @@ function syncHover(
   )
 }
 
+/** Couches « vous êtes ici » : cercle de précision + point de localisation.
+ * Toujours au-dessus de tout ; vides tant que l'utilisateur n'a pas activé
+ * la géolocalisation (bouton dédié, pas de demande automatique).
+ *
+ * Deux anneaux d'ondulation (façon Instagram/WhatsApp « live »), décalés
+ * d'une demi-période par startUserLocationPulse : ils s'étirent depuis le
+ * point puis s'estompent, en boucle, sous le point lui-même. */
+function userLocationLayers(isDark: boolean): LayerSpecification[] {
+  const dot = isDark ? "#c0fe71" : "#9ccf3c"
+  const halo = isDark ? "#0b0d09" : "#ffffff"
+  const pulse = isDark ? "rgba(192, 254, 113, 0.75)" : "rgba(156, 207, 60, 0.7)"
+  const accuracy = isDark
+    ? "rgba(192, 254, 113, 0.13)"
+    : "rgba(156, 207, 60, 0.16)"
+  const accuracyOutline = isDark
+    ? "rgba(192, 254, 113, 0.4)"
+    : "rgba(156, 207, 60, 0.45)"
+  const pulseLayers: LayerSpecification[] = USER_LOCATION_PULSE_LAYERS.map(
+    (id) => ({
+      id,
+      type: "circle",
+      source: "user-location",
+      filter: ["==", ["geometry-type"], "Point"],
+      // Remplissage transparent : seul le contour (anneau) est dessiné.
+      // L'animation pilote le rayon et circle-stroke-opacity (circle-opacity
+      // ne fond que le remplissage dans MapLibre) ; contour invisible tant
+      // que la boucle ne tourne pas.
+      paint: {
+        "circle-color": "rgba(0, 0, 0, 0)",
+        "circle-radius": 14,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": pulse,
+        "circle-stroke-opacity": 0,
+      },
+    })
+  )
+  return [
+    {
+      id: "user-location-accuracy",
+      type: "fill",
+      source: "user-location",
+      filter: ["==", ["geometry-type"], "Polygon"],
+      paint: { "fill-color": accuracy },
+    },
+    {
+      id: "user-location-accuracy-outline",
+      type: "line",
+      source: "user-location",
+      filter: ["==", ["geometry-type"], "Polygon"],
+      paint: { "line-color": accuracyOutline, "line-width": 1 },
+    },
+    ...pulseLayers,
+    {
+      id: "user-location-dot",
+      type: "circle",
+      source: "user-location",
+      filter: ["==", ["geometry-type"], "Point"],
+      paint: {
+        "circle-color": dot,
+        "circle-radius": 7.5,
+        "circle-stroke-width": 2.5,
+        "circle-stroke-color": halo,
+      },
+    },
+  ]
+}
+
 /** Couches POI du style liberty (arrêts de bus, commerces…) injectées dans le
  * style dark, qui n'en fournit pas. Recolorées pour le fond sombre (sprite
  * partagé liberty/dark, donc les icônes existent). */
@@ -290,6 +359,7 @@ async function buildPredictaStyle(isDark: boolean): Promise<StyleSpecification> 
   layers.splice(at, 0, ...inject)
   layers.push(hoverLayer(isDark))
   layers.push(selectedLayer(isDark))
+  layers.push(...userLocationLayers(isDark))
   return {
     ...base,
     sources: { ...base.sources, ...predictaSources() },
@@ -312,6 +382,7 @@ function fallbackStyle(isDark: boolean): StyleSpecification {
       ...predictaLayers(isDark),
       hoverLayer(isDark),
       selectedLayer(isDark),
+      ...userLocationLayers(isDark),
     ],
   }
 }
@@ -340,6 +411,22 @@ let liveMap: MapLibreMap | null = null
 
 export function getLiveMap(): MapLibreMap | null {
   return liveMap
+}
+
+// Les contrôles (chrome) sont des frères de la carte : ils ne peuvent pas lire
+// son contexte interne. Ce registre leur notifie l'arrivée (ou le départ) de
+// l'instance maplibre pour qu'ils se rendent au bon moment.
+const liveMapListeners = new Set<() => void>()
+
+export function subscribeLiveMap(listener: () => void): () => void {
+  liveMapListeners.add(listener)
+  return () => {
+    liveMapListeners.delete(listener)
+  }
+}
+
+function notifyLiveMap(): void {
+  for (const listener of liveMapListeners) listener()
 }
 
 declare global {
@@ -449,6 +536,7 @@ export function CityMap({
         }
         mapRef.current = map
         liveMap = map
+        notifyLiveMap()
         if (process.env.NODE_ENV !== "production") {
           window.__predictaMap = map
           window.__predictaEngine = trafficEngine
@@ -638,7 +726,10 @@ export function CityMap({
           map.getCanvas().removeEventListener("mouseleave", onMouseLeave)
           map.off("moveend", onViewChange)
           map.remove()
-          if (liveMap === map) liveMap = null
+          if (liveMap === map) {
+            liveMap = null
+            notifyLiveMap()
+          }
           mapRef.current = null
         }
       })

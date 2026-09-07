@@ -1,7 +1,8 @@
 "use client"
 
+import { useEffect, useReducer } from "react"
 import { LocateFixedIcon } from "lucide-react"
-import { getLiveMap, useMap } from "@/components/map/city-map"
+import { getLiveMap, subscribeLiveMap } from "@/components/map/city-map"
 import { TANA_CENTER } from "@/lib/geo"
 
 /**
@@ -9,8 +10,10 @@ import { TANA_CENTER } from "@/lib/geo"
  * le NavigationControl natif de MapLibre (en haut à droite, parité déploy).
  */
 export function MapControls() {
-  // La vue (contexte) force le re-rendu quand la carte est prête.
-  useMap()
+  // Se rend quand l'instance maplibre arrive (ou part) : on l'interroge à ce
+  // moment-là, pas pendant le rendu (règle react-hooks/refs).
+  const [, forceRender] = useReducer((x: number) => x + 1, 0)
+  useEffect(() => subscribeLiveMap(forceRender), [])
   const map = getLiveMap()
   if (!map) return null
 

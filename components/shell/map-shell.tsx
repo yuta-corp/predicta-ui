@@ -9,6 +9,7 @@ import { Search } from "@/components/map/search"
 import { Freshness } from "@/components/map/freshness"
 import { RoutePanel } from "@/components/map/route-panel"
 import { MapControls } from "@/components/map/map-controls"
+import { GeolocationControl } from "@/components/map/geolocation-control"
 import { MapLegend } from "@/components/map/map-legend"
 import { useMap } from "@/components/map/city-map"
 import { formatCoordinates } from "@/lib/format"
@@ -90,6 +91,7 @@ export function MapShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-end gap-3">
             <ViewReadout />
+            <GeolocationControl />
             <MapControls />
           </div>
         </footer>

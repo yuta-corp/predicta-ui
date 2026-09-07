@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, type ReactNode } from "react"
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
 
 import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
 import { cn } from "@/lib/utils"

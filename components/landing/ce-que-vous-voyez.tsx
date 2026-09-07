@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from "react"
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
-
 import { Kicker, LineReveal } from "@/components/landing/motion-utils"
 import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
 
