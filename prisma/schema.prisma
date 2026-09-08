@@ -8,18 +8,23 @@ datasource db {
 }
 
 /// Utilisateur local, miroir des comptes Clerk (sync via webhook ou à la
-/// demande dans les server actions). `id` = Clerk user ID.
+/// demande dans les server actions). `id` = Clerk user ID. `username` est le
+/// pseudo choisi par l'utilisateur (recherche d'amis via `searchUsers`).
 model User {
-  id                  String         @id
+  id                  String                 @id
+  username            String?                @unique
   email               String?
   firstName           String?
   lastName            String?
   profileImageUrl     String?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  sentFriendships     Friendship[]   @relation("Requester")
-  receivedFriendships Friendship[]   @relation("Addressee")
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  sentFriendships     Friendship[]           @relation("Requester")
+  receivedFriendships Friendship[]           @relation("Addressee")
   locationShare       LocationShare?
+  shareViewers        LocationShareViewer[]  @relation("ShareAllowedTo")
+  viewedShares        LocationShareViewer[]  @relation("ViewerOf")
+  locationLinks       LocationShareLink[]
 
   @@map("users")
 }
@@ -61,4 +66,32 @@ model LocationShare {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("location_shares")
+}
+
+/// Autorisations « qui peut me voir » : une ligne par ami explicitement
+/// autorisé à voir ma position. Absence de ligne = personne ne me voit.
+/// Les lignes survivent à l'arrêt du partage : la sélection est mémorisée.
+model LocationShareViewer {
+  shareUserId  String
+  viewerUserId String
+  createdAt    DateTime @default(now())
+  shareUser    User     @relation("ShareAllowedTo", fields: [shareUserId], references: [id], onDelete: Cascade)
+  viewer       User     @relation("ViewerOf", fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@id([shareUserId, viewerUserId])
+  @@index([viewerUserId])
+  @@map("location_share_viewers")
+}
+
+/// Lien de partage externe (option « partager par lien »). Le lien est secret
+/// (token), mais sa consultation exige d'être authentifié chez Clerk.
+model LocationShareLink {
+  token     String    @id
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("location_share_links")
 }
