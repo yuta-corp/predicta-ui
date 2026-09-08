@@ -580,7 +580,7 @@ export function CityMap({
           style,
           center: [TANA_CENTER[0], TANA_CENTER[1]],
           zoom: 12.2,
-          minZoom: 8.5,
+          minZoom: 2,
           maxZoom: 17,
           attributionControl: false,
           dragRotate: true,

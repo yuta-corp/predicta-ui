@@ -20,13 +20,13 @@ const FOLLOW_THRESHOLD_M = 30
 const RECENTER_PAUSE_MS = 8_000
 
 /** Messages d'erreur humains, par code GeolocationPositionError. */
-const ERROR_MESSAGES: Record<number, string> = {
+export const ERROR_MESSAGES: Record<number, string> = {
   1: "Localisation refusée. Autorisez l'accès à votre position puis réessayez.",
   2: "Impossible de connaître votre position sur cet appareil.",
   3: "Votre position n'a pas pu être déterminée. Réessayez dans un instant.",
 }
 
-const DEFAULT_ERROR =
+export const DEFAULT_ERROR =
   "Un problème est survenu avec la localisation. Réessayez dans un instant."
 
 function reducedMotion(): boolean {
@@ -208,7 +208,7 @@ export function GeolocationControl() {
           watchIdRef.current = navigator.geolocation.watchPosition(
             (p) => applyFix(p.coords),
             () => {},
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 }
           )
         }
       },
@@ -219,7 +219,7 @@ export function GeolocationControl() {
           duration: 6000,
         })
       },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }
     )
   }, [applyFix])
 
