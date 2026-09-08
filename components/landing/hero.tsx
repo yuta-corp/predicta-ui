@@ -204,7 +204,7 @@ export function Hero() {
             >
               Voyez les embouteillages avant de partir.
               <br />
-              Retrouvez vos amis où qu'ils soient.
+              Choisissez votre route en connaissance de cause.
             </p>
 
             <div
