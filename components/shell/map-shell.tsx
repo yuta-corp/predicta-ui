@@ -5,6 +5,7 @@ import Link from "next/link"
 
 import { Wordmark } from "@/components/shell/wordmark"
 import { Nav } from "@/components/shell/nav"
+import { AuthCluster } from "@/components/auth/auth-cluster"
 import { Search } from "@/components/map/search"
 import { Freshness } from "@/components/map/freshness"
 import { RoutePanel } from "@/components/map/route-panel"
@@ -58,6 +59,7 @@ export function MapShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="pointer-events-auto flex items-center gap-3">
+            <AuthCluster compact />
             <Search />
             <Link
               href="/status"
