@@ -1,11 +1,13 @@
+import { ClerkProvider } from "@clerk/nextjs"
 import { Geist_Mono, Instrument_Sans } from "next/font/google"
 import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css"
+import { LocationSharingProvider } from "@/components/location-sharing-provider"
+import { CookieConsent } from "@/components/consent/cookie-consent"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
-import { CookieConsent } from "@/components/consent/cookie-consent"
 import { cn } from "@/lib/utils"
 
 const instrument = Instrument_Sans({
@@ -110,12 +112,16 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider defaultTheme="light">
-          {children}
-          <Toaster />
-        </ThemeProvider>
-        <CookieConsent />
-        <Analytics />
+        <ClerkProvider>
+          <LocationSharingProvider>
+            <ThemeProvider defaultTheme="light">
+              {children}
+              <Toaster />
+            </ThemeProvider>
+            <CookieConsent />
+            <Analytics />
+          </LocationSharingProvider>
+        </ClerkProvider>
       </body>
     </html>
   )

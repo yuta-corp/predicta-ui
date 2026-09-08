@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { Wordmark } from "@/components/shell/wordmark"
+import { SiteHeader } from "@/components/shell/site-header"
 
 const LEGAL_LINKS = [
   ["/privacy", "Confidentialité"],
@@ -25,17 +25,7 @@ export function DocumentLayout({
 }: DocumentLayoutProps) {
   return (
     <main className="min-h-dvh bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Wordmark />
-          <Link
-            href="/map"
-            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            La carte
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
         <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-primary">
