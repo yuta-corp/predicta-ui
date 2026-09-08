@@ -1,6 +1,8 @@
 import { LandingHeader } from "@/components/shell/landing-header"
 import { LandingFooter } from "@/components/shell/landing-footer"
 import { Hero } from "@/components/landing/hero"
+import { CeQueVousVoyez } from "@/components/landing/ce-que-vous-voyez"
+import { FinalLoop } from "@/components/landing/final-loop"
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://predicta-ui.vercel.app"
 
@@ -53,9 +55,8 @@ export default function LandingPage() {
 
       <main className="relative">
         <Hero />
-        <p className="border-t border-border/60 py-10 text-center text-sm text-muted-foreground">
-          Le trafic de Tana, en temps réel.
-        </p>
+        <CeQueVousVoyez />
+        <FinalLoop />
       </main>
 
       <LandingFooter />
