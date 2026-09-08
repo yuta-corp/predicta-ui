@@ -67,7 +67,7 @@ export default function AddFriendForm({ onSent }: AddFriendFormProps) {
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Pseudo ou nom, ex. « mialy »"
+          placeholder="Pseudo ou nom, ex. « dummy »"
           aria-label="Rechercher un utilisateur par pseudo"
           className="pl-8"
         />
