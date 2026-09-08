@@ -122,11 +122,11 @@ export function CeQueVousVoyez() {
     >
       <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
         <div ref={titleRef} className="mx-auto max-w-3xl">
-          <Kicker>La carte</Kicker>
+          <Kicker>Predicta</Kicker>
           <LineReveal className="mt-5 max-w-2xl text-[clamp(2.4rem,6vw,4.75rem)] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground">
-            Tout ce que vous voyez
+            Le trafic de Tana.
             <br />
-            est en temps réel.
+            Vos amis, où qu'ils soient.
           </LineReveal>
         </div>
 
@@ -220,27 +220,28 @@ const FEATURES = [
     ),
   },
   {
-    title: "Les informations",
+    title: "Vos amis, en direct",
     description:
-      "Cliquez sur une route pour voir son nom, sa vitesse et son état actuel.",
+      "Retrouvez la position de vos amis qui la partagent, où qu'ils se trouvent — à Tana comme à l'autre bout du monde.",
     illustration: (
-      <svg viewBox="0 0 400 180" className="block w-full" role="img" aria-label="Informations d'une route">
+      <svg viewBox="0 0 400 180" className="block w-full" role="img" aria-label="Partage de position entre amis">
         <rect width="400" height="180" fill="#F1F1ED" />
         <defs>
-          <pattern id="fg3" width="20" height="20" patternUnits="userSpaceOnUse">
+          <pattern id="fg4" width="20" height="20" patternUnits="userSpaceOnUse">
             <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(7,7,7,0.04)" strokeWidth="0.5" />
           </pattern>
         </defs>
-        <rect width="400" height="180" fill="url(#fg3)" />
-        {/* Route */}
-        <path d="M 30 140 C 100 120, 160 80, 220 60 S 320 30, 380 20" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={7} strokeLinecap="round" />
-        <path d="M 30 140 C 100 120, 160 80, 220 60 S 320 30, 380 20" fill="none" stroke="#7fae3f" strokeWidth={4} strokeLinecap="round" className="feature-road" />
-        {/* Panneau d'info */}
-        <rect x={180} y={80} width={190} height={72} rx={5} fill="#F7F7F4" stroke="rgba(7,7,7,0.12)" strokeWidth={1} />
-        <text x={194} y={100} fill="#5a7a2e" fontSize={9} fontFamily="var(--font-sans)" fontWeight="600">AVENUE DE L'INDÉPENDANCE</text>
-        <text x={194} y={116} fill="#6b7a5e" fontSize={8} fontFamily="var(--font-sans)">Vitesse : 32 km/h</text>
-        <text x={194} y={130} fill="#6b7a5e" fontSize={8} fontFamily="var(--font-sans)">État : fluide</text>
-        <text x={194} y={144} fill="#6b7a5e" fontSize={8} fontFamily="var(--font-sans)">Mis à jour il y a 45 s</text>
+        <rect width="400" height="180" fill="url(#fg4)" />
+        {/* Carte stylisée avec routes */}
+        <path d="M 20 100 C 70 80, 120 70, 180 60 S 300 40, 390 50" fill="none" stroke="rgba(7,7,7,0.1)" strokeWidth={3} strokeLinecap="round" />
+        <path d="M 60 160 C 90 120, 150 90, 240 70 S 360 50, 385 70" fill="none" stroke="rgba(7,7,7,0.1)" strokeWidth={3} strokeLinecap="round" />
+        <path d="M 120 20 C 130 60, 150 110, 180 160" fill="none" stroke="rgba(7,7,7,0.08)" strokeWidth={2.5} strokeLinecap="round" className="feature-road" />
+        {/* Marqueur géolocalisé (ami) */}
+        <circle cx={150} cy={60} r={14} fill="rgba(37,99,235,0.12)" />
+        <circle cx={150} cy={60} r={6} fill="#2563eb" stroke="#fff" strokeWidth={2} />
+        {/* Marqueur géolocalisé (deuxième ami) */}
+        <circle cx={300} cy={75} r={11} fill="rgba(127,174,63,0.12)" />
+        <circle cx={300} cy={75} r={4.5} fill="#7fae3f" stroke="#fff" strokeWidth={2} />
       </svg>
     ),
   },

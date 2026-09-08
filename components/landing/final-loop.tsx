@@ -82,9 +82,9 @@ export function FinalLoop() {
           ref={titleRef}
           className="text-[clamp(2.4rem,7vw,5rem)] font-semibold leading-[0.95] tracking-[-0.03em] text-foreground"
         >
-          Voyez les embouteillages
+          Voyez le trafic.
           <br />
-          avant de partir.
+          Retrouvez vos amis.
         </h2>
 
         <div ref={ctaRef} className="mt-10">
