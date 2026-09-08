@@ -7,6 +7,7 @@ import CustomSignInButton from "@/components/auth/sign-in-button"
 import CustomUserMenu from "@/components/auth/user-menu"
 import LocationSharingIndicator from "@/components/location-sharing-indicator"
 import { LocationSharingPanel } from "@/components/location-sharing/location-sharing-panel"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 import { cn } from "@/lib/utils"
 
 interface AuthClusterProps {
@@ -35,6 +36,7 @@ export function AuthCluster({ className, compact = false }: AuthClusterProps) {
           >
             Amis
           </Link>
+          <NotificationBell />
           <LocationSharingIndicator compact={compact} />
           <LocationSharingPanel compact={compact} />
           <CustomUserMenu />
