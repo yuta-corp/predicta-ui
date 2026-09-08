@@ -9,7 +9,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
  * API trafic, webhooks) reste public, et l'authentification est vérifiée
  * au plus près de l'usage (server actions, route handlers).
  */
-const isProtectedRoute = createRouteMatcher(["/friends(.*)"])
+const isProtectedRoute = createRouteMatcher(["/friends(.*)", "/share(.*)"])
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
