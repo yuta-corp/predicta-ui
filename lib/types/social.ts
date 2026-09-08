@@ -14,6 +14,16 @@ export interface FriendRequest {
   createdAt: Date
 }
 
+/** Demande d'ami sortante acceptée (notification). */
+export interface AcceptedFriendRequest {
+  id: string
+  friendId: string
+  friendName: string
+  friendImageUrl: string | null
+  /** Date à laquelle l'ami a accepté (updatedAt de la relation). */
+  acceptedAt: Date
+}
+
 export interface FriendLocation {
   userId: string
   name: string
