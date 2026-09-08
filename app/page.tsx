@@ -2,6 +2,7 @@ import { LandingHeader } from "@/components/shell/landing-header"
 import { LandingFooter } from "@/components/shell/landing-footer"
 import { Hero } from "@/components/landing/hero"
 import { CeQueVousVoyez } from "@/components/landing/ce-que-vous-voyez"
+import { PartagePosition } from "@/components/landing/partage-position"
 import { FinalLoop } from "@/components/landing/final-loop"
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://predicta-ui.vercel.app"
@@ -56,6 +57,7 @@ export default function LandingPage() {
       <main className="relative">
         <Hero />
         <CeQueVousVoyez />
+        <PartagePosition />
         <FinalLoop />
       </main>
 
