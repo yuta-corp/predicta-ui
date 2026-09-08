@@ -1,9 +1,12 @@
 "use client"
 
-import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import { useFriendsLocations } from "@/hooks/use-friends-locations"
 import {
   Map as MapLibreMap,
+  Marker,
   NavigationControl,
+  Popup,
   setWorkerUrl,
   type GeoJSONSource,
   type MapMouseEvent,
@@ -26,6 +29,7 @@ import { trafficEngine, type SelectedRoute } from "@/lib/traffic/engine"
 import { USER_LOCATION_PULSE_LAYERS } from "@/lib/map/user-location"
 import { buildGraticule } from "@/lib/map/graticule"
 import { quartiersByLowerName } from "@/lib/data/quartiers"
+import type { FriendLocation } from "@/lib/types/social"
 import type { TrafficFeature, TrafficFeatureCollection } from "@/lib/types/traffic"
 import { featureKey, TANA_CENTER } from "@/lib/geo"
 import { cn } from "@/lib/utils"
@@ -471,6 +475,68 @@ export function CityMap({
   const [pulse, setPulse] = useState<{ id: number; x: number; y: number } | null>(null)
   const [view, setView] = useState<MapView | null>(null)
 
+  // --- Marqueurs des positions partagées des amis (polling dans le hook) ---
+  const { data: friendLocations } = useFriendsLocations()
+  const friendMarkersRef = useRef<Marker[]>([])
+  const friendLocationsRef = useRef<FriendLocation[] | null>(null)
+
+  const syncFriendMarkers = useCallback((locations: FriendLocation[] | null) => {
+    const map = mapRef.current
+    if (!map || !map.isStyleLoaded()) return
+
+    friendMarkersRef.current.forEach((marker) => marker.remove())
+    friendMarkersRef.current = []
+    friendLocationsRef.current = locations
+
+    if (!locations || locations.length === 0) return
+
+    locations.forEach((location) => {
+      const element = document.createElement("div")
+      element.className =
+        "flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-blue-600 shadow-md"
+
+      const dot = document.createElement("span")
+      dot.className = "h-2 w-2 rounded-full bg-white"
+      element.appendChild(dot)
+
+      const content = document.createElement("div")
+      content.className = "flex items-center gap-2 p-1"
+      if (location.imageUrl) {
+        const img = document.createElement("img")
+        img.src = location.imageUrl
+        img.alt = location.name
+        img.className = "h-8 w-8 rounded-full"
+        content.appendChild(img)
+      }
+      const info = document.createElement("div")
+      const nameEl = document.createElement("p")
+      nameEl.className = "text-sm font-medium"
+      nameEl.textContent = location.name
+      const timeEl = document.createElement("p")
+      timeEl.className = "text-xs text-muted-foreground"
+      timeEl.textContent = `Position mise à jour à ${location.updatedAt.toLocaleTimeString("fr-FR")}`
+      info.append(nameEl, timeEl)
+      content.appendChild(info)
+
+      const marker = new Marker({ element })
+        .setLngLat([location.longitude, location.latitude])
+        .setPopup(new Popup({ offset: 12 }).setDOMContent(content))
+        .addTo(map)
+      friendMarkersRef.current.push(marker)
+    })
+  }, [])
+
+  // Rafraîchit les marqueurs à chaque lot de positions reçu ; les markers
+  // sont retirés à la fermeture (le map.remove() de la carte les retire aussi).
+  useEffect(() => {
+    syncFriendMarkers(friendLocations)
+    return () => {
+      friendMarkersRef.current.forEach((marker) => marker.remove())
+      friendMarkersRef.current = []
+      friendLocationsRef.current = null
+    }
+  }, [friendLocations, syncFriendMarkers])
+
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -555,6 +621,8 @@ export function CityMap({
         map.on("load", () => {
           syncSelection(map, trafficEngine.getSnapshot().selected)
           onReady?.()
+          // Les positions des amis arrivées avant le chargement de la carte.
+          syncFriendMarkers(friendLocationsRef.current)
           const c = map.getCenter()
           setView({ lon: c.lng, lat: c.lat, zoom: map.getZoom() })
           // Refresh périodique des tuiles (technique tag-ip) : MapLibre revalide
@@ -564,6 +632,7 @@ export function CityMap({
               if (map.getSource("traffic")) map.refreshTiles("traffic")
             }, TILE_REFRESH_MS)
           }
+
         })
 
         // --- Dérive lente de la caméra (ville vivante, héros landing) ---
@@ -738,7 +807,7 @@ export function CityMap({
       disposed = true
       cleanup?.()
     }
-  }, [interactive, onReady, drift, forceDark, forceLight, showControls])
+  }, [interactive, onReady, drift, forceDark, forceLight, showControls, syncFriendMarkers])
 
   return (
     <MapContext.Provider value={{ view }}>

@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react"
 
 import { Wordmark } from "@/components/shell/wordmark"
 import { Nav, NAV_LINKS } from "@/components/shell/nav"
+import { AuthCluster } from "@/components/auth/auth-cluster"
 import { EASE } from "@/components/landing/motion-utils"
 import { cn } from "@/lib/utils"
 
@@ -61,6 +62,7 @@ export function LandingHeader() {
           <Nav />
         </div>
         <div className="flex items-center gap-1">
+          <AuthCluster className="hidden md:flex" />
           <Link
             href="/map"
             className="group inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:text-lime-ink"
@@ -125,6 +127,7 @@ export function LandingHeader() {
                     aria-hidden
                   />
                 </Link>
+                <AuthCluster className="justify-start border-t border-border/60 pt-3" />
               </div>
             </div>
           </motion.nav>

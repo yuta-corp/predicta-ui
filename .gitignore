@@ -38,3 +38,6 @@ next-env.d.ts
 
 # État local de l'app desktop (base SQLite) — jamais dans Git.
 .freebuff/
+
+# Client Prisma généré — regénéré via `prisma generate` (postinstall / db:generate).
+/generated/
