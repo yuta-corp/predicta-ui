@@ -2,13 +2,108 @@
 
 import { ensureLocalUser, requireUserId, displayName, userProfileSelect } from "@/lib/actions/helpers"
 import { prisma } from "@/lib/prisma"
-import type { Friend, FriendRequest } from "@/lib/types/social"
+import type { Friend, FriendRequest, MyProfile, UserSearchResult } from "@/lib/types/social"
+
+const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,20}$/
+
+/** Définit (ou remplace) le pseudo de l'utilisateur courant. */
+export async function setUsername(username: string): Promise<void> {
+  const userId = await requireUserId()
+  await ensureLocalUser(userId)
+
+  const value = username.trim()
+  if (!USERNAME_REGEX.test(value)) {
+    throw new Error("Pseudo invalide : 3 à 20 caractères (lettres, chiffres, . _ -).")
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { username: value },
+    select: { id: true },
+  })
+  if (existing && existing.id !== userId) {
+    throw new Error("Ce pseudo est déjà utilisé.")
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { username: value },
+  })
+}
+
+/** Profil local de l'utilisateur courant (inclut le pseudo), ou null. */
+export async function getMyProfile(): Promise<MyProfile | null> {
+  const userId = await requireUserId()
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      profileImageUrl: true,
+    },
+  })
+
+  return user
+}
+
+/**
+ * Recherche d'utilisateurs par pseudo (ou nom) pour envoyer une demande.
+ * Exclut soi-même et les utilisateurs avec qui une relation existe déjà.
+ */
+export async function searchUsers(query: string): Promise<UserSearchResult[]> {
+  const userId = await requireUserId()
+
+  const q = query.trim()
+  if (!q) return []
+
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        { username: { contains: q, mode: "insensitive" } },
+        { firstName: { contains: q, mode: "insensitive" } },
+        { lastName: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: userProfileSelect,
+    take: 12,
+  })
+
+  const candidates = users.filter((user) => user.id !== userId)
+  if (candidates.length === 0) return []
+
+  const related = await prisma.friendship.findMany({
+    where: {
+      OR: [
+        { requesterId: userId, addresseeId: { in: candidates.map((u) => u.id) } },
+        { requesterId: { in: candidates.map((u) => u.id) }, addresseeId: userId },
+      ],
+    },
+    select: { requesterId: true, addresseeId: true },
+  })
+  const relatedIds = new Set(
+    related.map((row) =>
+      row.requesterId === userId ? row.addresseeId : row.requesterId
+    )
+  )
+
+  return candidates
+    .filter((user) => !relatedIds.has(user.id))
+    .map((user) => ({
+      id: user.id,
+      username: user.username,
+      name: displayName(user),
+      imageUrl: user.profileImageUrl,
+    }))
+}
 
 /** Envoie une demande d'ami (requester = utilisateur courant). */
 export async function sendFriendRequest(addresseeId: string): Promise<void> {
   const userId = await requireUserId()
 
-  if (!addresseeId) {
+  if (!addresseeId?.trim()) {
     throw new Error("Identifiant d'utilisateur manquant.")
   }
   if (addresseeId === userId) {

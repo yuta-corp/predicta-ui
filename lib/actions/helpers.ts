@@ -5,15 +5,18 @@ import { prisma } from "@/lib/prisma"
 /** Sélection minimale d'un profil utilisateur (listes amis, demandes). */
 export const userProfileSelect = {
   id: true,
+  username: true,
   firstName: true,
   lastName: true,
   profileImageUrl: true,
 } as const
 
 export function displayName(user: {
+  username?: string | null
   firstName: string | null
   lastName: string | null
 }): string {
+  if (user.username) return user.username
   return [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || "Utilisateur"
 }
 
@@ -26,6 +29,21 @@ export async function requireUserId(): Promise<string> {
   }
 
   return userId
+}
+
+/** Ids des amis acceptés (dans les deux sens) de l'utilisateur donné. */
+export async function getAcceptedFriendIds(userId: string): Promise<string[]> {
+  const rows = await prisma.friendship.findMany({
+    where: {
+      status: "accepted",
+      OR: [{ requesterId: userId }, { addresseeId: userId }],
+    },
+    select: { requesterId: true, addresseeId: true },
+  })
+
+  return rows.map((row) =>
+    row.requesterId === userId ? row.addresseeId : row.requesterId
+  )
 }
 
 /**
