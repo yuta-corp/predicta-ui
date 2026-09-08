@@ -45,10 +45,10 @@ import {
 
 const me = {
   id: "user_requester",
-  firstName: "Mialy",
+  firstName: "dummy",
   lastName: "Rakoto",
   imageUrl: "https://example.com/avatar.png",
-  primaryEmailAddress: { emailAddress: "mialy@example.com" },
+  primaryEmailAddress: { emailAddress: "dummy@example.com" },
 }
 
 beforeEach(() => {
@@ -262,7 +262,7 @@ describe("listFriends", () => {
       {
         id: "friendship_1",
         createdAt: new Date("2026-09-01T10:00:00Z"),
-        requester: { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+        requester: { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
         addressee: { id: "user_target", username: null, firstName: "Jean", lastName: "Ras", profileImageUrl: "https://example.com/j.png" },
       },
     ])
@@ -296,7 +296,7 @@ describe("listFriends", () => {
       {
         id: "friendship_1",
         createdAt: new Date("2026-09-01T10:00:00Z"),
-        requester: { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+        requester: { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
         addressee: { id: "user_target", username: "jeanr", firstName: "Jean", lastName: "Ras", profileImageUrl: null },
       },
     ])
@@ -424,18 +424,18 @@ describe("getMyProfile", () => {
     userMock.findUnique.mockResolvedValue({
       id: "user_requester",
       username: "yuta",
-      firstName: "Mialy",
+      firstName: "dummy",
       lastName: "Rakoto",
-      email: "mialy@example.com",
+      email: "dummy@example.com",
       profileImageUrl: "https://example.com/avatar.png",
     })
 
     await expect(getMyProfile()).resolves.toEqual({
       id: "user_requester",
       username: "yuta",
-      firstName: "Mialy",
+      firstName: "dummy",
       lastName: "Rakoto",
-      email: "mialy@example.com",
+      email: "dummy@example.com",
       profileImageUrl: "https://example.com/avatar.png",
     })
   })
@@ -456,7 +456,7 @@ describe("searchUsers", () => {
 
   it("exclut toujours soi-même", async () => {
     userMock.findMany.mockResolvedValue([
-      { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+      { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
       { id: "user_target", username: null, firstName: "Jean", lastName: "Ras", profileImageUrl: null },
     ])
 
@@ -469,10 +469,10 @@ describe("searchUsers", () => {
 
   it("renvoie [] quand seul soi-même correspond", async () => {
     userMock.findMany.mockResolvedValue([
-      { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+      { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
     ])
 
-    await expect(searchUsers("Mialy")).resolves.toEqual([])
+    await expect(searchUsers("dummy")).resolves.toEqual([])
     expect(friendshipMock.findMany).not.toHaveBeenCalled()
   })
 

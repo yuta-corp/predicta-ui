@@ -78,10 +78,10 @@ beforeEach(() => {
   authMock.mockResolvedValue({ userId: "user_me" })
   currentUserMock.mockResolvedValue({
     id: "user_me",
-    firstName: "Mialy",
+    firstName: "dummy",
     lastName: "Rakoto",
     imageUrl: "https://example.com/m.png",
-    primaryEmailAddress: { emailAddress: "mialy@example.com" },
+    primaryEmailAddress: { emailAddress: "dummy@example.com" },
   })
   userMock.findUnique.mockResolvedValue({ id: "user_me" })
 })
