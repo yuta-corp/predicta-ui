@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import AddFriendForm from "@/components/friends/add-friend-form"
 import FriendRequestList from "@/components/friends/friend-request-list"
 import FriendsList from "@/components/friends/friends-list"
+import { PseudoForm } from "@/components/friends/pseudo-form"
 import { useFriends } from "@/hooks/use-friends"
 
 export function FriendsManager() {
@@ -84,6 +85,8 @@ export function FriendsManager() {
         </p>
       )}
 
+      <PseudoForm />
+
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Demandes reçues</h2>
         <FriendRequestList requests={requests} onAccept={handleAccept} onReject={handleReject} />
@@ -96,6 +99,9 @@ export function FriendsManager() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Ajouter un ami</h2>
+        <p className="text-sm text-muted-foreground">
+          Cherchez par pseudo (ou nom) puis envoyez une demande d'ami.
+        </p>
         <AddFriendForm onSent={handleSend} />
       </section>
     </div>
