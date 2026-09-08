@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/nextjs"
 import CustomSignInButton from "@/components/auth/sign-in-button"
 import CustomUserMenu from "@/components/auth/user-menu"
 import LocationSharingIndicator from "@/components/location-sharing-indicator"
-import LocationSharingToggle from "@/components/location-sharing-toggle"
+import { LocationSharingPanel } from "@/components/location-sharing/location-sharing-panel"
 import { cn } from "@/lib/utils"
 
 interface AuthClusterProps {
@@ -17,7 +17,7 @@ interface AuthClusterProps {
 
 /**
  * Bloc authentification monté dans les en-têtes de page : connexion quand
- * déconnecté ; lien "Amis", indicateur + toggle de partage de position et
+ * déconnecté ; lien "Amis", indicateur + panneau de partage de position et
  * menu utilisateur quand connecté.
  */
 export function AuthCluster({ className, compact = false }: AuthClusterProps) {
@@ -36,7 +36,7 @@ export function AuthCluster({ className, compact = false }: AuthClusterProps) {
             Amis
           </Link>
           <LocationSharingIndicator compact={compact} />
-          <LocationSharingToggle compact={compact} />
+          <LocationSharingPanel compact={compact} />
           <CustomUserMenu />
         </>
       ) : (
