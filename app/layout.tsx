@@ -1,11 +1,18 @@
+import { ClerkProvider, Show } from "@clerk/nextjs"
 import { Geist_Mono, Instrument_Sans } from "next/font/google"
 import type { Metadata, Viewport } from "next"
+import Link from "next/link"
 import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css"
+import CustomSignInButton from "@/components/auth/sign-in-button"
+import CustomUserMenu from "@/components/auth/user-menu"
+import LocationSharingIndicator from "@/components/location-sharing-indicator"
+import { LocationSharingProvider } from "@/components/location-sharing-provider"
+import LocationSharingToggle from "@/components/location-sharing-toggle"
+import { CookieConsent } from "@/components/consent/cookie-consent"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
-import { CookieConsent } from "@/components/consent/cookie-consent"
 import { cn } from "@/lib/utils"
 
 const instrument = Instrument_Sans({
@@ -110,12 +117,41 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider defaultTheme="light">
-          {children}
-          <Toaster />
-        </ThemeProvider>
-        <CookieConsent />
-        <Analytics />
+        <ClerkProvider>
+          <LocationSharingProvider>
+            <ThemeProvider defaultTheme="light">
+              <header className="flex items-center justify-between gap-4 bg-gray-50 px-4 py-2">
+                <Link href="/" className="shrink-0 text-xl font-bold">
+                  Predicta
+                </Link>
+                <nav className="flex items-center gap-4 text-sm">
+                  <Link href="/" className="hover:underline">
+                    Carte
+                  </Link>
+                  <Show when="signed-in">
+                    <Link href="/friends" className="hover:underline">
+                      Amis
+                    </Link>
+                  </Show>
+                </nav>
+                <div className="flex items-center gap-3">
+                  <Show when="signed-out">
+                    <CustomSignInButton />
+                  </Show>
+                  <Show when="signed-in">
+                    <LocationSharingIndicator />
+                    <LocationSharingToggle />
+                    <CustomUserMenu />
+                  </Show>
+                </div>
+              </header>
+              {children}
+              <Toaster />
+            </ThemeProvider>
+            <CookieConsent />
+            <Analytics />
+          </LocationSharingProvider>
+        </ClerkProvider>
       </body>
     </html>
   )
