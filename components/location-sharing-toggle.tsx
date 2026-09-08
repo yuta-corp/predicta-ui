@@ -1,12 +1,20 @@
 "use client"
 
 import { useState } from "react"
+import { MapPin } from "lucide-react"
 import { toast } from "sonner"
 
 import { useLocationSharing } from "@/components/location-sharing-provider"
 import { Toggle } from "@/components/ui/toggle"
+import { cn } from "@/lib/utils"
 
-export default function LocationSharingToggle() {
+interface LocationSharingToggleProps {
+  compact?: boolean
+}
+
+export default function LocationSharingToggle({
+  compact = false,
+}: LocationSharingToggleProps) {
   const { isSharing, error, startSharing, stopSharing } = useLocationSharing()
   const [isPending, setIsPending] = useState(false)
 
@@ -27,15 +35,26 @@ export default function LocationSharingToggle() {
     }
   }
 
+  const label = isSharing
+    ? "Désactiver le partage de position"
+    : "Activer le partage de position"
+
   return (
     <Toggle
       pressed={isSharing}
       onPressedChange={handleToggle}
       disabled={isPending}
-      aria-label={isSharing ? "Désactiver le partage de position" : "Activer le partage de position"}
-      title={error ?? undefined}
+      aria-label={label}
+      title={error ?? label}
+      className={cn(compact && "h-7 w-7 p-0")}
     >
-      {isSharing ? "Partage actif" : "Partager"}
+      {compact ? (
+        <MapPin className="h-4 w-4" aria-hidden />
+      ) : isSharing ? (
+        "Partage actif"
+      ) : (
+        "Partager"
+      )}
     </Toggle>
   )
 }
