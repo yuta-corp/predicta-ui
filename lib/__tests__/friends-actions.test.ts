@@ -34,6 +34,7 @@ vi.mock("@/lib/prisma", () => ({
 import {
   acceptFriendRequest,
   getMyProfile,
+  getRecentlyAcceptedFriendRequests,
   listFriendRequests,
   listFriends,
   rejectFriendRequest,
@@ -45,10 +46,10 @@ import {
 
 const me = {
   id: "user_requester",
-  firstName: "Mialy",
+  firstName: "dummy",
   lastName: "Rakoto",
   imageUrl: "https://example.com/avatar.png",
-  primaryEmailAddress: { emailAddress: "mialy@example.com" },
+  primaryEmailAddress: { emailAddress: "dummy@example.com" },
 }
 
 beforeEach(() => {
@@ -262,7 +263,7 @@ describe("listFriends", () => {
       {
         id: "friendship_1",
         createdAt: new Date("2026-09-01T10:00:00Z"),
-        requester: { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+        requester: { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
         addressee: { id: "user_target", username: null, firstName: "Jean", lastName: "Ras", profileImageUrl: "https://example.com/j.png" },
       },
     ])
@@ -296,7 +297,7 @@ describe("listFriends", () => {
       {
         id: "friendship_1",
         createdAt: new Date("2026-09-01T10:00:00Z"),
-        requester: { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+        requester: { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
         addressee: { id: "user_target", username: "jeanr", firstName: "Jean", lastName: "Ras", profileImageUrl: null },
       },
     ])
@@ -347,6 +348,66 @@ describe("listFriendRequests", () => {
     const requests = await listFriendRequests()
 
     expect(requests[0].fromName).toBe("lovap")
+  })
+})
+
+describe("getRecentlyAcceptedFriendRequests", () => {
+  it("rejette quand l'utilisateur n'est pas connecté", async () => {
+    authMock.mockResolvedValue({ userId: null })
+
+    await expect(getRecentlyAcceptedFriendRequests()).rejects.toThrow("connecté")
+  })
+
+  it("ne remonte que les demandes sortantes accepted, du plus récent au plus ancien", async () => {
+    friendshipMock.findMany.mockResolvedValue([
+      {
+        id: "friendship_1",
+        updatedAt: new Date("2026-09-03T10:00:00Z"),
+        addressee: { id: "user_target", username: null, firstName: "Jean", lastName: "Ras", profileImageUrl: null },
+      },
+    ])
+
+    const accepted = await getRecentlyAcceptedFriendRequests()
+
+    expect(accepted).toEqual([
+      {
+        id: "friendship_1",
+        friendId: "user_target",
+        friendName: "Jean Ras",
+        friendImageUrl: null,
+        acceptedAt: new Date("2026-09-03T10:00:00Z"),
+      },
+    ])
+    expect(friendshipMock.findMany).toHaveBeenCalledWith({
+      where: { requesterId: "user_requester", status: "accepted" },
+      select: {
+        id: true,
+        updatedAt: true,
+        addressee: expect.objectContaining({ select: expect.objectContaining({ username: true }) }),
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 30,
+    })
+  })
+
+  it("affiche le pseudo de l'ami quand il est défini", async () => {
+    friendshipMock.findMany.mockResolvedValue([
+      {
+        id: "friendship_1",
+        updatedAt: new Date("2026-09-03T10:00:00Z"),
+        addressee: { id: "user_target", username: "jeanr", firstName: "Jean", lastName: "Ras", profileImageUrl: "https://example.com/j.png" },
+      },
+    ])
+
+    const accepted = await getRecentlyAcceptedFriendRequests()
+
+    expect(accepted[0]).toEqual({
+      id: "friendship_1",
+      friendId: "user_target",
+      friendName: "jeanr",
+      friendImageUrl: "https://example.com/j.png",
+      acceptedAt: new Date("2026-09-03T10:00:00Z"),
+    })
   })
 })
 
@@ -424,18 +485,18 @@ describe("getMyProfile", () => {
     userMock.findUnique.mockResolvedValue({
       id: "user_requester",
       username: "yuta",
-      firstName: "Mialy",
+      firstName: "dummy",
       lastName: "Rakoto",
-      email: "mialy@example.com",
+      email: "dummy@example.com",
       profileImageUrl: "https://example.com/avatar.png",
     })
 
     await expect(getMyProfile()).resolves.toEqual({
       id: "user_requester",
       username: "yuta",
-      firstName: "Mialy",
+      firstName: "dummy",
       lastName: "Rakoto",
-      email: "mialy@example.com",
+      email: "dummy@example.com",
       profileImageUrl: "https://example.com/avatar.png",
     })
   })
@@ -456,7 +517,7 @@ describe("searchUsers", () => {
 
   it("exclut toujours soi-même", async () => {
     userMock.findMany.mockResolvedValue([
-      { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+      { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
       { id: "user_target", username: null, firstName: "Jean", lastName: "Ras", profileImageUrl: null },
     ])
 
@@ -469,10 +530,10 @@ describe("searchUsers", () => {
 
   it("renvoie [] quand seul soi-même correspond", async () => {
     userMock.findMany.mockResolvedValue([
-      { id: "user_requester", username: null, firstName: "Mialy", lastName: "Rakoto", profileImageUrl: null },
+      { id: "user_requester", username: null, firstName: "dummy", lastName: "Rakoto", profileImageUrl: null },
     ])
 
-    await expect(searchUsers("Mialy")).resolves.toEqual([])
+    await expect(searchUsers("dummy")).resolves.toEqual([])
     expect(friendshipMock.findMany).not.toHaveBeenCalled()
   })
 

@@ -54,7 +54,7 @@ describe("displayName", () => {
     expect(
       displayName({
         username: "yuta",
-        firstName: "Mialy",
+        firstName: "dummy",
         lastName: "Rakoto",
       })
     ).toBe("yuta")
@@ -62,8 +62,8 @@ describe("displayName", () => {
 
   it("retombe sur nom + prénom sans pseudo", () => {
     expect(
-      displayName({ username: null, firstName: "Mialy", lastName: "Rakoto" })
-    ).toBe("Mialy Rakoto")
+      displayName({ username: null, firstName: "dummy", lastName: "Rakoto" })
+    ).toBe("dummy Rakoto")
   })
 
   it("gère un nom de famille absent", () => {
@@ -140,10 +140,10 @@ describe("ensureLocalUser", () => {
     userMock.findUnique.mockResolvedValue(null)
     currentUserMock.mockResolvedValue({
       id: "user_me",
-      firstName: "Mialy",
+      firstName: "dummy",
       lastName: "Rakoto",
       imageUrl: "https://example.com/a.png",
-      primaryEmailAddress: { emailAddress: "mialy@example.com" },
+      primaryEmailAddress: { emailAddress: "dummy@example.com" },
     })
 
     await ensureLocalUser("user_me")
@@ -152,8 +152,8 @@ describe("ensureLocalUser", () => {
       where: { id: "user_me" },
       create: {
         id: "user_me",
-        email: "mialy@example.com",
-        firstName: "Mialy",
+        email: "dummy@example.com",
+        firstName: "dummy",
         lastName: "Rakoto",
         profileImageUrl: "https://example.com/a.png",
       },

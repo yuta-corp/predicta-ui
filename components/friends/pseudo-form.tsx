@@ -67,7 +67,7 @@ export function PseudoForm() {
               id="pseudo"
               value={value}
               onChange={(event) => setValue(event.target.value)}
-              placeholder="ex. mialy_tana"
+              placeholder="ex. dummy_tana"
               maxLength={20}
               aria-invalid={!valid && trimmed.length > 0 || undefined}
             />
