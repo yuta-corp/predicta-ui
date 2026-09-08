@@ -20,6 +20,10 @@ interface LocationsState {
  * L'état est keyé par identifiant utilisateur : si la session change, les
  * anciennes positions ne sont jamais exposées au nouvel utilisateur (le
  * rendu dérive de `state.userId === user.id`).
+ *
+ * En cas d'échec ponctuel, on conserve les dernières positions connues (on
+ * ne vide pas la carte au premier retour réseau perdu), on ne signale que
+ * l'erreur.
  */
 export function useFriendsLocations() {
   const { user } = useUser()
@@ -41,14 +45,14 @@ export function useFriendsLocations() {
         if (!cancelled) setState({ userId, locations, error: null })
       } catch (err) {
         if (!cancelled) {
-          setState({
+          setState((prev) => ({
             userId,
-            locations: null,
+            locations: prev.userId === userId ? prev.locations : null,
             error:
               err instanceof Error
                 ? err.message
                 : "Impossible de charger les positions de vos amis.",
-          })
+          }))
         }
       }
     }
