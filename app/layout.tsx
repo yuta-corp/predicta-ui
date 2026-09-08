@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css"
 import { LocationSharingProvider } from "@/components/location-sharing-provider"
+import { NotificationsProvider } from "@/components/notifications-provider"
 import { CookieConsent } from "@/components/consent/cookie-consent"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
@@ -113,14 +114,16 @@ export default function RootLayout({
     >
       <body>
         <ClerkProvider>
-          <LocationSharingProvider>
-            <ThemeProvider defaultTheme="light">
-              {children}
-              <Toaster />
-            </ThemeProvider>
-            <CookieConsent />
-            <Analytics />
-          </LocationSharingProvider>
+          <NotificationsProvider>
+            <LocationSharingProvider>
+              <ThemeProvider defaultTheme="light">
+                {children}
+                <Toaster />
+              </ThemeProvider>
+              <CookieConsent />
+              <Analytics />
+            </LocationSharingProvider>
+          </NotificationsProvider>
         </ClerkProvider>
       </body>
     </html>
