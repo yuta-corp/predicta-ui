@@ -11,6 +11,7 @@ import {
   type NotificationTick,
 } from "@/lib/notifications/events"
 import type { FriendRequest } from "@/lib/types/social"
+import { registerServiceWorker } from "@/lib/push/client"
 
 export type { NotificationEntry, NotificationEntryKind } from "@/lib/notifications/events"
 
@@ -123,7 +124,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
     esRef.current?.close()
     esRef.current = null
-    if (userId) openStream(userId)
+    if (userId) {
+      openStream(userId)
+      // Enregistre le service worker (idempotent) : requis pour que le
+      // toggle push s'abonne instantanément et pour les notificationclick.
+      void registerServiceWorker().catch(() => {})
+    }
 
     // Pause quand l'onglet est masqué (zéro trafic réseau), reprise au curseur.
     const onVisible = () => {
