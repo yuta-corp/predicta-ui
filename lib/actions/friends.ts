@@ -2,6 +2,7 @@
 
 import { ensureLocalUser, requireUserId, displayName, userProfileSelect } from "@/lib/actions/helpers"
 import { prisma } from "@/lib/prisma"
+import { pushPayloadFromEntry, sendPushToUser } from "@/lib/push/server"
 import type {
   Friend,
   FriendRequest,
@@ -140,9 +141,33 @@ export async function sendFriendRequest(addresseeId: string): Promise<void> {
   // Le demandeur peut ne pas encore exister localement (webhook non reçu).
   await ensureLocalUser(userId)
 
-  await prisma.friendship.create({
+  const friendship = await prisma.friendship.create({
     data: { requesterId: userId, addresseeId, status: "pending" },
   })
+
+  await notifyFriendRequestCreated(userId, addresseeId, friendship.id)
+}
+
+/** Push « demande d'ami reçue » à l'attention du destinataire. */
+async function notifyFriendRequestCreated(
+  requesterId: string,
+  addresseeId: string,
+  friendshipId: string
+) {
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: userProfileSelect,
+  })
+  if (!requester) return
+
+  await sendPushToUser(
+    addresseeId,
+    pushPayloadFromEntry({
+      id: `request:${friendshipId}`,
+      kind: "request",
+      title: `${displayName(requester)} vous a envoyé une demande d'ami.`,
+    })
+  )
 }
 
 /** Accepte une demande reçue (addressee = utilisateur courant). */
@@ -151,7 +176,7 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
 
   const friendship = await prisma.friendship.findUnique({
     where: { id: requestId },
-    select: { id: true, addresseeId: true, status: true },
+    select: { id: true, requesterId: true, addresseeId: true, status: true },
   })
 
   if (!friendship || friendship.addresseeId !== userId) {
@@ -165,6 +190,26 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
     where: { id: requestId },
     data: { status: "accepted" },
   })
+
+  await notifyRequestAccepted(userId, friendship.requesterId, friendship.id)
+}
+
+/** Push « demande acceptée » à l'attention du demandeur. */
+async function notifyRequestAccepted(addresseeId: string, requesterId: string, friendshipId: string) {
+  const addressee = await prisma.user.findUnique({
+    where: { id: addresseeId },
+    select: userProfileSelect,
+  })
+  if (!addressee) return
+
+  await sendPushToUser(
+    requesterId,
+    pushPayloadFromEntry({
+      id: `accepted:${friendshipId}`,
+      kind: "accepted",
+      title: `${displayName(addressee)} a accepté votre demande.`,
+    })
+  )
 }
 
 /** Refuse une demande reçue (statut passé à declined, ré-émission possible). */
