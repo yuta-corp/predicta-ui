@@ -41,10 +41,25 @@ export async function updateLocation(
   // L'utilisateur peut ne pas encore exister localement (webhook non reçu).
   await ensureLocalUser(userId)
 
+  const existing = await prisma.locationShare.findUnique({
+    where: { userId },
+    select: { updatedAt: true },
+  })
+  // Nouvelle session de partage si la ligne manque ou est périmée : on fixe
+  // startedAt à maintenant pour que les partageurs « recommencent à partager »
+  // soient re-détectés (la position ne doit pas être considérée active sinon).
+  const fresh = existing && Date.now() - existing.updatedAt.getTime() <= LOCATION_TTL_MS
+  const startedAt = new Date()
+
   await prisma.locationShare.upsert({
     where: { userId },
-    create: { userId, latitude, longitude, accuracy: accuracy ?? null },
-    update: { latitude, longitude, accuracy: accuracy ?? null },
+    create: { userId, latitude, longitude, accuracy: accuracy ?? null, startedAt },
+    update: {
+      latitude,
+      longitude,
+      accuracy: accuracy ?? null,
+      ...(fresh ? {} : { startedAt }),
+    },
   })
 }
 
