@@ -6,14 +6,12 @@ import {
   type NotificationEntry,
 } from "@/lib/notifications/events"
 import { prisma } from "@/lib/prisma"
+import { LOCATION_TTL_MS } from "@/lib/location-constants"
 import type {
   AcceptedFriendRequest,
   FriendLocation,
   FriendRequest,
 } from "@/lib/types/social"
-
-/** Une position plus vieille que ce délai est considérée comme périmée. */
-const LOCATION_TTL_MS = 5 * 60_000
 
 /**
  * Service serveur du flux SSE /api/notifications. Consomme un curseur (ms

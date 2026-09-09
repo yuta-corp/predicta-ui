@@ -10,10 +10,8 @@ import {
   userProfileSelect,
 } from "@/lib/actions/helpers"
 import { prisma } from "@/lib/prisma"
+import { LOCATION_TTL_MS } from "@/lib/location-constants"
 import type { FriendLocation, SharedLocation } from "@/lib/types/social"
-
-/** Une position plus vieille que ce délai est considérée comme périmée. */
-const LOCATION_TTL_MS = 5 * 60_000
 
 /** Durée de vie d'un lien de partage (révocable à tout moment par ailleurs). */
 const LINK_TTL_MS = 24 * 60 * 60 * 1000
