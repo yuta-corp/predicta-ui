@@ -33,12 +33,12 @@ export function NotificationBell() {
 
   const handleAccept = async (requestId: string) => {
     await acceptFriendRequest(requestId)
-    await refresh()
+    refresh()
   }
 
   const handleReject = async (requestId: string) => {
     await rejectFriendRequest(requestId)
-    await refresh()
+    refresh()
   }
 
   return (

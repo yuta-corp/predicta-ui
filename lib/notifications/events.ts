@@ -13,11 +13,13 @@ export interface NotificationEntry {
 }
 
 export interface NotificationSnapshot {
+  type: "snapshot"
   /** Demandes d'amis reçues en attente (alimente le badge de la cloche). */
   requests: FriendRequest[]
 }
 
 export interface NotificationTick {
+  type: "tick"
   /** Demandes reçues toujours en attente (badge à jour). */
   requests: FriendRequest[]
   /** Nouveaux événements depuis le dernier curseur. */
