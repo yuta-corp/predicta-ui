@@ -25,6 +25,7 @@ model User {
   shareViewers        LocationShareViewer[]  @relation("ShareAllowedTo")
   viewedShares        LocationShareViewer[]  @relation("ViewerOf")
   locationLinks       LocationShareLink[]
+  pushSubscriptions   PushSubscription[]
 
   @@map("users")
 }
@@ -97,4 +98,21 @@ model LocationShareLink {
 
   @@index([userId])
   @@map("location_share_links")
+}
+
+/// Abonnement Web Push d'un utilisateur — une ligne par navigateur/appareil.
+/// Permet d'envoyer des notifications push même quand l'application est
+/// fermée. L'endpoint identifie l'abonnement auprès du service push des
+/// navigateurs (FCM/Mozilla/Apple) et est unique.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  auth      String
+  p256dh    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
