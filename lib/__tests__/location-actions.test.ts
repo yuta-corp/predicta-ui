@@ -100,6 +100,7 @@ describe("updateLocation", () => {
   })
 
   it("fait un upsert de la position (création)", async () => {
+    locationShareMock.findUnique.mockResolvedValue(null)
     await updateLocation(-18.8792, 47.5079, 12)
 
     expect(locationShareMock.upsert).toHaveBeenCalledWith({
@@ -109,12 +110,14 @@ describe("updateLocation", () => {
         latitude: -18.8792,
         longitude: 47.5079,
         accuracy: 12,
+        startedAt: expect.any(Date),
       },
-      update: {
+      update: expect.objectContaining({
         latitude: -18.8792,
         longitude: 47.5079,
         accuracy: 12,
-      },
+        startedAt: expect.any(Date),
+      }),
     })
   })
 

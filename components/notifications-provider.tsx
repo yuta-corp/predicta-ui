@@ -6,57 +6,42 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import {
-  getRecentlyAcceptedFriendRequests,
-  listFriendRequests,
-} from "@/lib/actions/friends"
-import { getFriendsLocations } from "@/lib/actions/location"
-import {
-  acceptedKey,
-  diffAcceptedRequests,
-  diffIncomingRequests,
-  diffNewSharers,
-} from "@/lib/notifications/diff"
+  type NotificationEntry,
+  type NotificationSnapshot,
+  type NotificationTick,
+} from "@/lib/notifications/events"
 import type { FriendRequest } from "@/lib/types/social"
 
-const POLL_INTERVAL_MS = 30_000
+export type { NotificationEntry, NotificationEntryKind } from "@/lib/notifications/events"
+
 const MAX_RECENT = 10
 
-export type NotificationEntryKind = "request" | "accepted" | "sharing"
-
-export interface NotificationEntry {
-  id: string
-  kind: NotificationEntryKind
-  title: string
-}
-
 interface NotificationsState {
-  /** Utilisateur propriétaire de `requests`/`recent` (sécurité de session). */
   userId: string
   requests: FriendRequest[]
   recent: NotificationEntry[]
 }
 
 interface NotificationsContextValue {
-  /** Demandes d'amis reçues en attente (alimente le badge de la cloche). */
   requests: FriendRequest[]
-  /** Activité récente (demandes reçues, acceptations, partages débutés). */
   recent: NotificationEntry[]
-  /** Re-polle immédiatement (après accept/refus, par ex.). */
+  /** Rebranche immédiatement le flux (après accept/refus, ex.). */
   refresh: () => Promise<void>
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null)
 
 /**
- * Cloche de notifications : pose un socle de relecture (baseline, sans toast)
- * puis poll toutes les 30 s demandes reçues, acceptations de demandes
- * sortantes et nouveaux partageurs de position. Un toast est affiché pour
- * chaque nouvel événement, et l'activité récente alimente le panneau cloche.
+ * Cloche de notifications — push serveur via Server-Sent Events.
+ *
+ * Une seule `EventSource` ouverte sur /api/notifications : le serveur sample
+ * la base et pousse les nouveaux événements. Chaque message porte un `id:`
+ * (curseur ms) ; à la reconnexion le navigateur renvoie `Last-Event-ID`, on
+ * donne explicitement le curseur à l'ouverture manuelle (onglet caché →
+ * visible, refresh) — rien n'est perdu ni dupliqué.
  *
  * L'état est keyé par identifiant utilisateur : si la session change, les
- * anciennes notifications ne sont jamais exposées (le rendu dérive de
- * `state.userId === user.id`). Une génération invalide les sondages obsolètes
- * restés en vol au moment d'un changement de session.
+ * anciennes notifications ne sont jamais exposées.
  */
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded, user } = useUser()
@@ -67,122 +52,102 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     requests: [],
     recent: [],
   })
-  const baselineDone = useRef(false)
-  const generation = useRef(0)
-  const polling = useRef(false)
-  const seenRequests = useRef<Set<string>>(new Set())
-  const seenAccepted = useRef<Set<string>>(new Set())
-  const seenSharers = useRef<Set<string>>(new Set())
-  const runPollRef = useRef(() => Promise.resolve())
+  const esRef = useRef<EventSource | null>(null)
+  const cursorRef = useRef<number>(0)
+  const userIdRef = useRef<string | null>(null)
+
+  const attachStream = useCallback(
+    (es: EventSource, userId: string) => {
+      es.onmessage = (event) => {
+        if (event.lastEventId) cursorRef.current = Number(event.lastEventId)
+        try {
+          const data = JSON.parse(event.data) as NotificationSnapshot | NotificationTick
+          const isSnapshot = !("events" in data)
+
+          if (isSnapshot) {
+            setState((prev) => ({
+              userId,
+              requests: data.requests,
+              recent: prev.userId === userId ? prev.recent : [],
+            }))
+            return
+          }
+
+          setState((prev) => ({
+            userId,
+            requests: data.requests,
+            recent:
+              data.events.length > 0
+                ? [...data.events, ...(prev.userId === userId ? prev.recent : [])].slice(
+                    0,
+                    MAX_RECENT
+                  )
+                : prev.userId === userId
+                  ? prev.recent
+                  : [],
+          }))
+
+          // Événement arrivé pendant que l'onglet était visible : toast.
+          if (data.events.length > 0) {
+            for (const entry of data.events) {
+              toast(entry.title, {
+                action: {
+                  label: "Voir",
+                  onClick: () => router.push("/friends"),
+                },
+              })
+            }
+          }
+        } catch (err) {
+          console.error("[notifications] message SSE illisible :", err)
+        }
+      }
+      // Sur erreur, EventSource se reconnecte seul avec Last-Event-ID.
+    },
+    [router]
+  )
+
+  const openStream = useCallback(
+    (userId: string) => {
+      esRef.current?.close()
+      const url = new URL("/api/notifications", window.location.origin)
+      if (cursorRef.current > 0) url.searchParams.set("cursor", String(cursorRef.current))
+      const es = new EventSource(url)
+      esRef.current = es
+      attachStream(es, userId)
+    },
+    [attachStream]
+  )
 
   useEffect(() => {
-    const userId = user?.id
-    if (!isLoaded || !userId) return
+    const userId = user?.id ?? null
+    if (!isLoaded) return
+    userIdRef.current = userId
+    cursorRef.current = 0
 
-    baselineDone.current = false
-    seenRequests.current.clear()
-    seenAccepted.current.clear()
-    seenSharers.current.clear()
-    generation.current += 1
-    const gen = generation.current
+    esRef.current?.close()
+    esRef.current = null
+    if (userId) openStream(userId)
 
-    let cancelled = false
-
-    const poll = async () => {
-      if (polling.current) return
-      polling.current = true
-      try {
-        const [incoming, acceptedRequests, locations] = await Promise.all([
-          listFriendRequests(),
-          getRecentlyAcceptedFriendRequests(),
-          getFriendsLocations(),
-        ])
-        if (cancelled || gen !== generation.current) return
-
-        // Premier passage : baseline, on ne notifie pas.
-        if (!baselineDone.current) {
-          baselineDone.current = true
-          for (const request of incoming) seenRequests.current.add(request.id)
-          for (const item of acceptedRequests) seenAccepted.current.add(acceptedKey(item))
-          for (const location of locations) seenSharers.current.add(location.userId)
-          setState({ userId, requests: incoming, recent: [] })
-          return
-        }
-
-        const newRequests = diffIncomingRequests(seenRequests.current, incoming)
-        const newAccepted = diffAcceptedRequests(seenAccepted.current, acceptedRequests)
-        const newSharers = diffNewSharers(seenSharers.current, locations)
-
-        for (const request of newRequests) seenRequests.current.add(request.id)
-        for (const item of newAccepted) seenAccepted.current.add(acceptedKey(item))
-        for (const location of newSharers) seenSharers.current.add(location.userId)
-
-        const entries: NotificationEntry[] = [
-          ...newRequests.map((request) => ({
-            id: `request:${request.id}`,
-            kind: "request" as const,
-            title: `${request.fromName} vous a envoyé une demande d'ami.`,
-          })),
-          ...newAccepted.map((item) => ({
-            id: `accepted:${item.friendId}:${item.acceptedAt.getTime()}`,
-            kind: "accepted" as const,
-            title: `${item.friendName} a accepté votre demande.`,
-          })),
-          ...newSharers.map((location) => ({
-            id: `sharing:${location.userId}`,
-            kind: "sharing" as const,
-            title: `${location.name} a commencé à partager sa position.`,
-          })),
-        ]
-
-        setState((prev) => ({
-          userId,
-          requests: incoming,
-          recent:
-            entries.length > 0
-              ? [
-                  ...entries,
-                  ...(prev.userId === userId ? prev.recent : []),
-                ].slice(0, MAX_RECENT)
-              : prev.userId === userId
-                ? prev.recent
-                : [],
-        }))
-
-        if (entries.length > 0) {
-          for (const entry of entries) {
-            toast(entry.title, {
-              action: {
-                label: "Voir",
-                onClick: () => router.push("/friends"),
-              },
-            })
-          }
-        }
-      } catch (err) {
-        console.error("Impossible de rafraîchir les notifications :", err)
-      } finally {
-        polling.current = false
-      }
-    }
-
-    runPollRef.current = () => poll()
-
-    void poll()
-    const interval = setInterval(() => void poll(), POLL_INTERVAL_MS)
+    // Pause quand l'onglet est masqué (zéro trafic réseau), reprise au curseur.
     const onVisible = () => {
-      if (document.visibilityState === "visible") void poll()
+      if (document.visibilityState !== "visible") return
+      const current = userIdRef.current
+      if (current) openStream(current)
     }
     document.addEventListener("visibilitychange", onVisible)
 
     return () => {
-      cancelled = true
-      clearInterval(interval)
       document.removeEventListener("visibilitychange", onVisible)
+      esRef.current?.close()
+      esRef.current = null
     }
-  }, [isLoaded, user?.id, router])
+  }, [isLoaded, user?.id, openStream])
 
-  const refresh = useCallback(() => runPollRef.current(), [])
+  const refresh = useCallback(async () => {
+    const userId = userIdRef.current
+    if (userId) openStream(userId)
+  }, [openStream])
 
   const current = state.userId === user?.id ? state : null
 

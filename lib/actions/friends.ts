@@ -3,7 +3,6 @@
 import { ensureLocalUser, requireUserId, displayName, userProfileSelect } from "@/lib/actions/helpers"
 import { prisma } from "@/lib/prisma"
 import type {
-  AcceptedFriendRequest,
   Friend,
   FriendRequest,
   MyProfile,
@@ -240,30 +239,6 @@ export async function listFriends(): Promise<Friend[]> {
       since: row.createdAt,
     }
   })
-}
-
-/** Demandes d'ami sortantes aujourd'hui acceptées (notification cloche). */
-export async function getRecentlyAcceptedFriendRequests(): Promise<AcceptedFriendRequest[]> {
-  const userId = await requireUserId()
-
-  const rows = await prisma.friendship.findMany({
-    where: { requesterId: userId, status: "accepted" },
-    select: {
-      id: true,
-      updatedAt: true,
-      addressee: { select: userProfileSelect },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 30,
-  })
-
-  return rows.map((row) => ({
-    id: row.id,
-    friendId: row.addressee.id,
-    friendName: displayName(row.addressee),
-    friendImageUrl: row.addressee.profileImageUrl,
-    acceptedAt: row.updatedAt,
-  }))
 }
 
 /** Liste les demandes reçues en attente. */
