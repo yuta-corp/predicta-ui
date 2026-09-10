@@ -10,10 +10,9 @@ import {
   userProfileSelect,
 } from "@/lib/actions/helpers"
 import { prisma } from "@/lib/prisma"
+import { LOCATION_TTL_MS } from "@/lib/location-constants"
+import { pushPayloadFromEntry, sendPushToUser } from "@/lib/push/server"
 import type { FriendLocation, SharedLocation } from "@/lib/types/social"
-
-/** Une position plus vieille que ce délai est considérée comme périmée. */
-const LOCATION_TTL_MS = 5 * 60_000
 
 /** Durée de vie d'un lien de partage (révocable à tout moment par ailleurs). */
 const LINK_TTL_MS = 24 * 60 * 60 * 1000
@@ -41,11 +40,31 @@ export async function updateLocation(
   // L'utilisateur peut ne pas encore exister localement (webhook non reçu).
   await ensureLocalUser(userId)
 
+  const existing = await prisma.locationShare.findUnique({
+    where: { userId },
+    select: { updatedAt: true },
+  })
+  // Nouvelle session de partage si la ligne manque ou est périmée : on fixe
+  // startedAt à maintenant pour que les partageurs « recommencent à partager »
+  // soient re-détectés (la position ne doit pas être considérée active sinon).
+  const fresh = existing && Date.now() - existing.updatedAt.getTime() <= LOCATION_TTL_MS
+  const startedAt = new Date()
+  const startingNow = !fresh
+
   await prisma.locationShare.upsert({
     where: { userId },
-    create: { userId, latitude, longitude, accuracy: accuracy ?? null },
-    update: { latitude, longitude, accuracy: accuracy ?? null },
+    create: { userId, latitude, longitude, accuracy: accuracy ?? null, startedAt },
+    update: {
+      latitude,
+      longitude,
+      accuracy: accuracy ?? null,
+      ...(fresh ? {} : { startedAt }),
+    },
   })
+
+  if (startingNow) {
+    await notifySharingStarted(userId)
+  }
 }
 
 /** Arrête le partage : la ligne de position est supprimée immédiatement. */
@@ -214,4 +233,28 @@ export async function getSharedLocation(token: string): Promise<SharedLocation |
     accuracy: share.accuracy,
     updatedAt: share.updatedAt,
   }
+}
+
+/** Push « X a commencé à partager sa position » aux amis autorisés. */
+async function notifySharingStarted(shareUserId: string) {
+  const viewerRows = await prisma.locationShareViewer.findMany({
+    where: { shareUserId },
+    select: { viewerUserId: true },
+  })
+  if (viewerRows.length === 0) return
+
+  const sharer = await prisma.user.findUnique({
+    where: { id: shareUserId },
+    select: userProfileSelect,
+  })
+  if (!sharer) return
+
+  const payload = pushPayloadFromEntry({
+    id: `sharing:${shareUserId}`,
+    kind: "sharing",
+    title: `${displayName(sharer)} a commencé à partager sa position.`,
+  })
+  await Promise.all(
+    viewerRows.map((row) => sendPushToUser(row.viewerUserId, payload))
+  )
 }

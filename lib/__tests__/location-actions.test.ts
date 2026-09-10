@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { authMock, currentUserMock, userMock, friendshipMock, locationShareMock, locationShareViewerMock, locationShareLinkMock } =
+const { authMock, currentUserMock, userMock, friendshipMock, locationShareMock, locationShareViewerMock, locationShareLinkMock, sendPushToUserMock } =
   vi.hoisted(() => ({
     authMock: vi.fn(),
     currentUserMock: vi.fn(),
@@ -28,6 +28,7 @@ const { authMock, currentUserMock, userMock, friendshipMock, locationShareMock, 
       deleteMany: vi.fn(),
       findUnique: vi.fn(),
     },
+    sendPushToUserMock: vi.fn(),
   }))
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -45,6 +46,15 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
       callback({ locationShareViewer: locationShareViewerMock }),
   },
+}))
+
+vi.mock("@/lib/push/server", () => ({
+  sendPushToUser: sendPushToUserMock,
+  pushPayloadFromEntry: (entry: { id: string; title: string }) => ({
+    id: entry.id,
+    title: entry.title,
+    url: "/map",
+  }),
 }))
 
 import {
@@ -84,6 +94,7 @@ beforeEach(() => {
     primaryEmailAddress: { emailAddress: "dummy@example.com" },
   })
   userMock.findUnique.mockResolvedValue({ id: "user_me" })
+  locationShareViewerMock.findMany.mockResolvedValue([])
 })
 
 describe("updateLocation", () => {
@@ -100,6 +111,7 @@ describe("updateLocation", () => {
   })
 
   it("fait un upsert de la position (création)", async () => {
+    locationShareMock.findUnique.mockResolvedValue(null)
     await updateLocation(-18.8792, 47.5079, 12)
 
     expect(locationShareMock.upsert).toHaveBeenCalledWith({
@@ -109,12 +121,14 @@ describe("updateLocation", () => {
         latitude: -18.8792,
         longitude: 47.5079,
         accuracy: 12,
+        startedAt: expect.any(Date),
       },
-      update: {
+      update: expect.objectContaining({
         latitude: -18.8792,
         longitude: 47.5079,
         accuracy: 12,
-      },
+        startedAt: expect.any(Date),
+      }),
     })
   })
 
@@ -153,6 +167,30 @@ describe("updateLocation", () => {
 
     expect(userMock.upsert).toHaveBeenCalled()
     expect(locationShareMock.upsert).toHaveBeenCalled()
+  })
+
+  it("prévient les viewers quand le partage reprend", async () => {
+    locationShareMock.findUnique.mockResolvedValue(null)
+    locationShareViewerMock.findMany.mockResolvedValue([
+      { viewerUserId: "user_ami_a" },
+      { viewerUserId: "user_ami_b" },
+    ])
+    userMock.findUnique.mockResolvedValue({
+      id: "user_me",
+      username: null,
+      firstName: "dummy",
+      lastName: "Rakoto",
+      profileImageUrl: null,
+    })
+
+    await updateLocation(-18.8792, 47.5079, 12)
+
+    expect(sendPushToUserMock).toHaveBeenCalledTimes(2)
+    expect(sendPushToUserMock).toHaveBeenCalledWith(
+      "user_ami_a",
+      expect.objectContaining({ title: expect.stringContaining("dummy Rakoto") })
+    )
+    expect(sendPushToUserMock).toHaveBeenCalledWith("user_ami_b", expect.any(Object))
   })
 })
 

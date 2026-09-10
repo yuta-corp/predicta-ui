@@ -1,23 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { authMock, currentUserMock, userMock, friendshipMock } = vi.hoisted(() => ({
-  authMock: vi.fn(),
-  currentUserMock: vi.fn(),
-  userMock: {
-    findUnique: vi.fn(),
-    findMany: vi.fn(),
-    update: vi.fn(),
-    upsert: vi.fn(),
-  },
-  friendshipMock: {
-    findUnique: vi.fn(),
-    findFirst: vi.fn(),
-    findMany: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-}))
+const { authMock, currentUserMock, userMock, friendshipMock, sendPushToUserMock } =
+  vi.hoisted(() => ({
+    authMock: vi.fn(),
+    currentUserMock: vi.fn(),
+    userMock: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      upsert: vi.fn(),
+    },
+    friendshipMock: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    sendPushToUserMock: vi.fn(),
+  }))
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: () => authMock(),
@@ -31,10 +33,18 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 
+vi.mock("@/lib/push/server", () => ({
+  sendPushToUser: sendPushToUserMock,
+  pushPayloadFromEntry: (entry: { id: string; title: string }) => ({
+    id: entry.id,
+    title: entry.title,
+    url: "/friends",
+  }),
+}))
+
 import {
   acceptFriendRequest,
   getMyProfile,
-  getRecentlyAcceptedFriendRequests,
   listFriendRequests,
   listFriends,
   rejectFriendRequest,
@@ -56,7 +66,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   authMock.mockResolvedValue({ userId: "user_requester" })
   currentUserMock.mockResolvedValue(me)
-  userMock.findUnique.mockResolvedValue({ id: "user_requester" })
+  userMock.findUnique.mockResolvedValue({
+    id: "user_requester",
+    username: null,
+    firstName: "dummy",
+    lastName: "Rakoto",
+    profileImageUrl: null,
+    email: "dummy@example.com",
+  })
+  friendshipMock.create.mockResolvedValue({ id: "friendship_1" })
 })
 
 describe("sendFriendRequest", () => {
@@ -140,6 +158,38 @@ describe("sendFriendRequest", () => {
       },
     })
   })
+
+  it("envoie un push d'invitation au destinataire", async () => {
+    userMock.findUnique.mockImplementation((args: { where: { id: string } }) =>
+      args.where.id === "user_target"
+        ? { id: "user_target" }
+        : args.where.id === "user_requester"
+          ? {
+              id: "user_requester",
+              username: null,
+              firstName: "dummy",
+              lastName: "Rakoto",
+              profileImageUrl: null,
+            }
+          : null
+    )
+    friendshipMock.findFirst.mockResolvedValue(null)
+    friendshipMock.create.mockResolvedValue({ id: "friendship_7" })
+
+    await sendFriendRequest("user_target")
+
+    expect(userMock.findUnique).toHaveBeenCalledWith({
+      where: { id: "user_requester" },
+      select: expect.objectContaining({ username: true, firstName: true }),
+    })
+    expect(sendPushToUserMock).toHaveBeenCalledWith(
+      "user_target",
+      expect.objectContaining({
+        id: "request:friendship_7",
+        title: expect.stringContaining("dummy Rakoto"),
+      })
+    )
+  })
 })
 
 describe("acceptFriendRequest", () => {
@@ -168,6 +218,7 @@ describe("acceptFriendRequest", () => {
   it("passe la demande en accepted", async () => {
     friendshipMock.findUnique.mockResolvedValue({
       id: "friendship_1",
+      requesterId: "user_target",
       addresseeId: "user_requester",
       status: "pending",
     })
@@ -178,6 +229,13 @@ describe("acceptFriendRequest", () => {
       where: { id: "friendship_1" },
       data: { status: "accepted" },
     })
+    expect(sendPushToUserMock).toHaveBeenCalledWith(
+      "user_target",
+      expect.objectContaining({
+        id: "accepted:friendship_1",
+        title: expect.stringContaining("dummy Rakoto"),
+      })
+    )
   })
 })
 
@@ -348,66 +406,6 @@ describe("listFriendRequests", () => {
     const requests = await listFriendRequests()
 
     expect(requests[0].fromName).toBe("lovap")
-  })
-})
-
-describe("getRecentlyAcceptedFriendRequests", () => {
-  it("rejette quand l'utilisateur n'est pas connecté", async () => {
-    authMock.mockResolvedValue({ userId: null })
-
-    await expect(getRecentlyAcceptedFriendRequests()).rejects.toThrow("connecté")
-  })
-
-  it("ne remonte que les demandes sortantes accepted, du plus récent au plus ancien", async () => {
-    friendshipMock.findMany.mockResolvedValue([
-      {
-        id: "friendship_1",
-        updatedAt: new Date("2026-09-03T10:00:00Z"),
-        addressee: { id: "user_target", username: null, firstName: "Jean", lastName: "Ras", profileImageUrl: null },
-      },
-    ])
-
-    const accepted = await getRecentlyAcceptedFriendRequests()
-
-    expect(accepted).toEqual([
-      {
-        id: "friendship_1",
-        friendId: "user_target",
-        friendName: "Jean Ras",
-        friendImageUrl: null,
-        acceptedAt: new Date("2026-09-03T10:00:00Z"),
-      },
-    ])
-    expect(friendshipMock.findMany).toHaveBeenCalledWith({
-      where: { requesterId: "user_requester", status: "accepted" },
-      select: {
-        id: true,
-        updatedAt: true,
-        addressee: expect.objectContaining({ select: expect.objectContaining({ username: true }) }),
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 30,
-    })
-  })
-
-  it("affiche le pseudo de l'ami quand il est défini", async () => {
-    friendshipMock.findMany.mockResolvedValue([
-      {
-        id: "friendship_1",
-        updatedAt: new Date("2026-09-03T10:00:00Z"),
-        addressee: { id: "user_target", username: "jeanr", firstName: "Jean", lastName: "Ras", profileImageUrl: "https://example.com/j.png" },
-      },
-    ])
-
-    const accepted = await getRecentlyAcceptedFriendRequests()
-
-    expect(accepted[0]).toEqual({
-      id: "friendship_1",
-      friendId: "user_target",
-      friendName: "jeanr",
-      friendImageUrl: "https://example.com/j.png",
-      acceptedAt: new Date("2026-09-03T10:00:00Z"),
-    })
   })
 })
 
