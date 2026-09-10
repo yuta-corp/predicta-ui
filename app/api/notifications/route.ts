@@ -30,7 +30,13 @@ const STREAM_TTL_MS = 45_000
  */
 const KEEPALIVE_MS = 20_000
 
-function sseComment(line: string): string {
+/** Encadre un message SSE (id + data). */
+export function sseFrame(id: number, payload: unknown): string {
+  return `id: ${id}\ndata: ${JSON.stringify(payload)}\n\n`
+}
+
+/** Encadre un commentaire SSE (rôle keep-alive). */
+export function sseComment(line: string): string {
   return `: ${line}\n\n`
 }
 
@@ -48,7 +54,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Curseur de reprise : Last-Event-ID renvoyé par le navigateur, sinon
-  // premier snapshot = état courant, aucune notification rétroactive.
+  // premier contact = snapshot de l'état courant (aucune notification
+  // rétroactive).
   const resumedCursor =
     Number(request.headers.get("last-event-id")) ||
     Number(request.nextUrl.searchParams.get("cursor"))
@@ -73,24 +80,35 @@ export async function GET(request: NextRequest) {
       try {
         const pending = await listPendingRequests(userId)
         lastCursor = cursor
-        const snapshot: NotificationSnapshot = { requests: pending }
-        send(`id: ${lastCursor}\ndata: ${JSON.stringify(snapshot)}\n\n`)
+        const snapshot: NotificationSnapshot = { type: "snapshot", requests: pending }
+        send(sseFrame(lastCursor, snapshot))
       } catch (err) {
         console.error("[notifications] snapshot initial échoué :", err)
         controller.error(err)
         return
       }
 
+      let tickTimer: ReturnType<typeof setTimeout> | undefined
+      let closed = false
+
+      const stop = () => {
+        if (tickTimer) clearTimeout(tickTimer)
+        tickTimer = undefined
+        closed = true
+      }
+
       const tick = async () => {
+        if (closed) return
         try {
+          // Ticks séquentiels : la prochaine passe n'est planifiée qu'après
+          // la fin de la précédente — jamais de chevauchement, le curseur
+          // reste cohérent même si une requête DB est lente.
           const [requests, accepted, sharers] = await Promise.all([
             listPendingRequests(userId),
             listAcceptedSince(userId, lastCursor),
             listNewSharersSince(userId, lastCursor),
           ])
 
-          // Eventual consistency : seuls les événements plus récents que le
-          // curseur sont notifiés ; on avance ensuite le curseur au « maintenant ».
           const now = Date.now()
           const events: NotificationEntry[] = buildEvents(
             requests,
@@ -101,32 +119,35 @@ export async function GET(request: NextRequest) {
           lastCursor = now
 
           if (events.length > 0) {
-            const frame = { requests, events }
-            send(`id: ${lastCursor}\ndata: ${JSON.stringify(frame)}\n\n`)
+            const frame = { type: "tick", requests, events }
+            send(sseFrame(lastCursor, frame))
           } else if (now - lastPing >= KEEPALIVE_MS) {
             send(sseComment(`ping ${now}`))
             lastPing = now
           }
         } catch (err) {
           console.error("[notifications] tick échoué :", err)
+        } finally {
+          if (!closed) tickTimer = setTimeout(() => void tick(), SAMPLE_MS)
         }
       }
 
-      const interval = setInterval(() => void tick(), SAMPLE_MS)
-
-      const onAbort = () => clearInterval(interval)
-      request.signal.addEventListener("abort", onAbort, { once: true })
-
-      // Ferme proprement le flux après TTL : le navigateur reconnecte avec
-      // Last-Event-ID et reprend au curseur exact.
-      setTimeout(() => {
-        clearInterval(interval)
+      const onAbort = () => {
+        stop()
         try {
           controller.close()
         } catch {
           /* déjà fermé */
         }
-      }, STREAM_TTL_MS)
+      }
+      request.signal.addEventListener("abort", onAbort, { once: true })
+
+      // Ferme proprement le flux après TTL : le navigateur reconnecte avec
+      // Last-Event-ID et reprend au curseur exact. La première passe
+      // d'échantillonnage est lancée aussitôt ; les suivantes se
+      // re-planifient elles-mêmes dans `tick`.
+      setTimeout(() => onAbort(), STREAM_TTL_MS)
+      tickTimer = setTimeout(() => void tick(), SAMPLE_MS)
     },
   })
 

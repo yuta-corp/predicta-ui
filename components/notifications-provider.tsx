@@ -11,6 +11,7 @@ import {
   type NotificationTick,
 } from "@/lib/notifications/events"
 import type { FriendRequest } from "@/lib/types/social"
+import { registerServiceWorker } from "@/lib/push/client"
 
 export type { NotificationEntry, NotificationEntryKind } from "@/lib/notifications/events"
 
@@ -26,7 +27,7 @@ interface NotificationsContextValue {
   requests: FriendRequest[]
   recent: NotificationEntry[]
   /** Rebranche immédiatement le flux (après accept/refus, ex.). */
-  refresh: () => Promise<void>
+  refresh: () => void
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null)
@@ -59,47 +60,43 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const attachStream = useCallback(
     (es: EventSource, userId: string) => {
       es.onmessage = (event) => {
-        if (event.lastEventId) cursorRef.current = Number(event.lastEventId)
+        // On n'avance le curseur qu'après un traitement réussi : un message
+        // illisible ne fait pas perdre définitivement ses événements.
+        let data: NotificationSnapshot | NotificationTick
         try {
-          const data = JSON.parse(event.data) as NotificationSnapshot | NotificationTick
-          const isSnapshot = !("events" in data)
+          data = JSON.parse(event.data) as NotificationSnapshot | NotificationTick
+        } catch (err) {
+          console.error("[notifications] message SSE illisible :", err)
+          return
+        }
+        if (event.lastEventId) cursorRef.current = Number(event.lastEventId)
 
-          if (isSnapshot) {
-            setState((prev) => ({
-              userId,
-              requests: data.requests,
-              recent: prev.userId === userId ? prev.recent : [],
-            }))
-            return
-          }
-
+        if (data.type === "snapshot") {
           setState((prev) => ({
             userId,
             requests: data.requests,
-            recent:
-              data.events.length > 0
-                ? [...data.events, ...(prev.userId === userId ? prev.recent : [])].slice(
-                    0,
-                    MAX_RECENT
-                  )
-                : prev.userId === userId
-                  ? prev.recent
-                  : [],
+            recent: prev.userId === userId ? prev.recent : [],
           }))
+          return
+        }
 
-          // Événement arrivé pendant que l'onglet était visible : toast.
-          if (data.events.length > 0) {
-            for (const entry of data.events) {
-              toast(entry.title, {
-                action: {
-                  label: "Voir",
-                  onClick: () => router.push("/friends"),
-                },
-              })
-            }
-          }
-        } catch (err) {
-          console.error("[notifications] message SSE illisible :", err)
+        setState((prev) => ({
+          userId,
+          requests: data.requests,
+          recent: [...data.events, ...(prev.userId === userId ? prev.recent : [])].slice(
+            0,
+            MAX_RECENT
+          ),
+        }))
+
+        // Événement arrivé pendant que l'onglet était visible : toast.
+        for (const entry of data.events) {
+          toast(entry.title, {
+            action: {
+              label: "Voir",
+              onClick: () => router.push("/friends"),
+            },
+          })
         }
       }
       // Sur erreur, EventSource se reconnecte seul avec Last-Event-ID.
@@ -127,7 +124,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
     esRef.current?.close()
     esRef.current = null
-    if (userId) openStream(userId)
+    if (userId) {
+      openStream(userId)
+      // Enregistre le service worker (idempotent) : requis pour que le
+      // toggle push s'abonne instantanément et pour les notificationclick.
+      void registerServiceWorker().catch(() => {})
+    }
 
     // Pause quand l'onglet est masqué (zéro trafic réseau), reprise au curseur.
     const onVisible = () => {
@@ -144,7 +146,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     }
   }, [isLoaded, user?.id, openStream])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(() => {
     const userId = userIdRef.current
     if (userId) openStream(userId)
   }, [openStream])

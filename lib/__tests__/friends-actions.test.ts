@@ -1,23 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { authMock, currentUserMock, userMock, friendshipMock } = vi.hoisted(() => ({
-  authMock: vi.fn(),
-  currentUserMock: vi.fn(),
-  userMock: {
-    findUnique: vi.fn(),
-    findMany: vi.fn(),
-    update: vi.fn(),
-    upsert: vi.fn(),
-  },
-  friendshipMock: {
-    findUnique: vi.fn(),
-    findFirst: vi.fn(),
-    findMany: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-}))
+const { authMock, currentUserMock, userMock, friendshipMock, sendPushToUserMock } =
+  vi.hoisted(() => ({
+    authMock: vi.fn(),
+    currentUserMock: vi.fn(),
+    userMock: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      upsert: vi.fn(),
+    },
+    friendshipMock: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    sendPushToUserMock: vi.fn(),
+  }))
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: () => authMock(),
@@ -29,6 +31,15 @@ vi.mock("@/lib/prisma", () => ({
     user: userMock,
     friendship: friendshipMock,
   },
+}))
+
+vi.mock("@/lib/push/server", () => ({
+  sendPushToUser: sendPushToUserMock,
+  pushPayloadFromEntry: (entry: { id: string; title: string }) => ({
+    id: entry.id,
+    title: entry.title,
+    url: "/friends",
+  }),
 }))
 
 import {
@@ -55,7 +66,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   authMock.mockResolvedValue({ userId: "user_requester" })
   currentUserMock.mockResolvedValue(me)
-  userMock.findUnique.mockResolvedValue({ id: "user_requester" })
+  userMock.findUnique.mockResolvedValue({
+    id: "user_requester",
+    username: null,
+    firstName: "dummy",
+    lastName: "Rakoto",
+    profileImageUrl: null,
+    email: "dummy@example.com",
+  })
+  friendshipMock.create.mockResolvedValue({ id: "friendship_1" })
 })
 
 describe("sendFriendRequest", () => {
@@ -139,6 +158,38 @@ describe("sendFriendRequest", () => {
       },
     })
   })
+
+  it("envoie un push d'invitation au destinataire", async () => {
+    userMock.findUnique.mockImplementation((args: { where: { id: string } }) =>
+      args.where.id === "user_target"
+        ? { id: "user_target" }
+        : args.where.id === "user_requester"
+          ? {
+              id: "user_requester",
+              username: null,
+              firstName: "dummy",
+              lastName: "Rakoto",
+              profileImageUrl: null,
+            }
+          : null
+    )
+    friendshipMock.findFirst.mockResolvedValue(null)
+    friendshipMock.create.mockResolvedValue({ id: "friendship_7" })
+
+    await sendFriendRequest("user_target")
+
+    expect(userMock.findUnique).toHaveBeenCalledWith({
+      where: { id: "user_requester" },
+      select: expect.objectContaining({ username: true, firstName: true }),
+    })
+    expect(sendPushToUserMock).toHaveBeenCalledWith(
+      "user_target",
+      expect.objectContaining({
+        id: "request:friendship_7",
+        title: expect.stringContaining("dummy Rakoto"),
+      })
+    )
+  })
 })
 
 describe("acceptFriendRequest", () => {
@@ -167,6 +218,7 @@ describe("acceptFriendRequest", () => {
   it("passe la demande en accepted", async () => {
     friendshipMock.findUnique.mockResolvedValue({
       id: "friendship_1",
+      requesterId: "user_target",
       addresseeId: "user_requester",
       status: "pending",
     })
@@ -177,6 +229,13 @@ describe("acceptFriendRequest", () => {
       where: { id: "friendship_1" },
       data: { status: "accepted" },
     })
+    expect(sendPushToUserMock).toHaveBeenCalledWith(
+      "user_target",
+      expect.objectContaining({
+        id: "accepted:friendship_1",
+        title: expect.stringContaining("dummy Rakoto"),
+      })
+    )
   })
 })
 

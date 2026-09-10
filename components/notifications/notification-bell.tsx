@@ -16,6 +16,7 @@ import {
   type NotificationEntryKind,
 } from "@/components/notifications-provider"
 import { acceptFriendRequest, rejectFriendRequest } from "@/lib/actions/friends"
+import { PushNotificationsToggle } from "@/components/notifications/push-notifications-toggle"
 
 const KIND_ICON: Record<NotificationEntryKind, typeof MapPin> = {
   request: UserPlus,
@@ -33,12 +34,12 @@ export function NotificationBell() {
 
   const handleAccept = async (requestId: string) => {
     await acceptFriendRequest(requestId)
-    await refresh()
+    refresh()
   }
 
   const handleReject = async (requestId: string) => {
     await rejectFriendRequest(requestId)
-    await refresh()
+    refresh()
   }
 
   return (
@@ -65,6 +66,8 @@ export function NotificationBell() {
         <PopoverHeader>
           <PopoverTitle>Notifications</PopoverTitle>
         </PopoverHeader>
+
+        <PushNotificationsToggle />
 
         {count > 0 && (
           <section aria-label="Demandes d'amis" className="border-b border-border pb-2.5">
