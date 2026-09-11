@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
+
 import { useFriendsLocations } from "@/hooks/use-friends-locations"
 import {
   Map as MapLibreMap,
@@ -26,8 +28,15 @@ import type {
 import "maplibre-gl/dist/maplibre-gl.css"
 
 import { trafficEngine, type SelectedRoute } from "@/lib/traffic/engine"
+import {
+  buildFriendAccuracyGeoJson,
+  buildFriendMarkerElement,
+  buildFriendPopupElement,
+  MAX_FRIENDS_ON_MAP,
+} from "@/lib/map/friend-markers"
 import { USER_LOCATION_PULSE_LAYERS } from "@/lib/map/user-location"
 import { buildGraticule } from "@/lib/map/graticule"
+import { useMapFocusStore } from "@/lib/store/map-focus"
 import { quartiersByLowerName } from "@/lib/data/quartiers"
 import type { FriendLocation } from "@/lib/types/social"
 import type { TrafficFeature, TrafficFeatureCollection } from "@/lib/types/traffic"
@@ -126,7 +135,32 @@ function predictaSources(): Record<string, SourceSpecification> {
     selection: { type: "geojson", data: EMPTY_FC },
     hover: { type: "geojson", data: EMPTY_FC },
     "user-location": { type: "geojson", data: EMPTY_FC },
+    "friend-accuracy": { type: "geojson", data: EMPTY_FC },
   }
+}
+
+/**
+ * Cercles de précision des amis. Un cercle large est une information honnête :
+ * il montre d'un coup d'œil que la position de l'ami est approximative, au lieu
+ * de laisser croire à un point exact.
+ */
+function friendAccuracyLayers(isDark: boolean): LayerSpecification[] {
+  const fill = isDark ? "rgba(96, 165, 250, 0.12)" : "rgba(37, 99, 235, 0.09)"
+  const outline = isDark ? "rgba(147, 197, 253, 0.45)" : "rgba(37, 99, 235, 0.32)"
+  return [
+    {
+      id: "friend-accuracy",
+      type: "fill",
+      source: "friend-accuracy",
+      paint: { "fill-color": fill },
+    },
+    {
+      id: "friend-accuracy-outline",
+      type: "line",
+      source: "friend-accuracy",
+      paint: { "line-color": outline, "line-width": 1 },
+    },
+  ]
 }
 
 /** Couches Predicta (graticule, quartiers, trafic) — sous les symboles du basemap. */
@@ -363,6 +397,7 @@ async function buildPredictaStyle(isDark: boolean): Promise<StyleSpecification> 
   layers.splice(at, 0, ...inject)
   layers.push(hoverLayer(isDark))
   layers.push(selectedLayer(isDark))
+  layers.push(...friendAccuracyLayers(isDark))
   layers.push(...userLocationLayers(isDark))
   return {
     ...base,
@@ -386,9 +421,28 @@ function fallbackStyle(isDark: boolean): StyleSpecification {
       ...predictaLayers(isDark),
       hoverLayer(isDark),
       selectedLayer(isDark),
+      ...friendAccuracyLayers(isDark),
       ...userLocationLayers(isDark),
     ],
   }
+}
+
+/** Dessine les cercles de précision des amis (ou rien si aucune position). */
+function syncFriendAccuracy(
+  map: MapLibreMap,
+  locations: FriendLocation[] | null
+): void {
+  const source = map.getSource("friend-accuracy")
+  if (!source || source.type !== "geojson") return
+  ;(source as GeoJSONSource).setData(buildFriendAccuracyGeoJson(locations ?? []))
+}
+
+/** Respecte le réglage système « réduire les animations ». */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
 }
 
 export interface MapView {
@@ -475,67 +529,99 @@ export function CityMap({
   const [pulse, setPulse] = useState<{ id: number; x: number; y: number } | null>(null)
   const [view, setView] = useState<MapView | null>(null)
 
-  // --- Marqueurs des positions partagées des amis (polling dans le hook) ---
+  // --- Positions partagées des amis (polling dans le hook) ---
   const { data: friendLocations } = useFriendsLocations()
-  const friendMarkersRef = useRef<Marker[]>([])
+  /** Marqueur + popup par ami, pour pouvoir ouvrir la popup par programme. */
+  const friendsRef = useRef(new Map<string, { marker: Marker; popup: Popup }>())
   const friendLocationsRef = useRef<FriendLocation[] | null>(null)
 
-  const syncFriendMarkers = useCallback((locations: FriendLocation[] | null) => {
+  // Demande de recentrage sur un ami (toast « Voir », lien profond `?friend=`) :
+  // la carte vit dans le layout et n'est pas remontée en changeant de route, un
+  // état partagé est donc nécessaire pour déclencher le recentrage.
+  const focusedFriendId = useMapFocusStore((state) => state.friendId)
+  const focusNonce = useMapFocusStore((state) => state.nonce)
+  const clearFriendFocus = useMapFocusStore((state) => state.clearFriendFocus)
+
+  const flyToFriend = useCallback((location: FriendLocation) => {
     const map = mapRef.current
-    if (!map || !map.isStyleLoaded()) return
-
-    friendMarkersRef.current.forEach((marker) => marker.remove())
-    friendMarkersRef.current = []
-    friendLocationsRef.current = locations
-
-    if (!locations || locations.length === 0) return
-
-    locations.forEach((location) => {
-      const element = document.createElement("div")
-      element.className =
-        "flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-blue-600 shadow-md"
-
-      const dot = document.createElement("span")
-      dot.className = "h-2 w-2 rounded-full bg-white"
-      element.appendChild(dot)
-
-      const content = document.createElement("div")
-      content.className = "flex items-center gap-2 p-1"
-      if (location.imageUrl) {
-        const img = document.createElement("img")
-        img.src = location.imageUrl
-        img.alt = location.name
-        img.className = "h-8 w-8 rounded-full"
-        content.appendChild(img)
-      }
-      const info = document.createElement("div")
-      const nameEl = document.createElement("p")
-      nameEl.className = "text-sm font-medium"
-      nameEl.textContent = location.name
-      const timeEl = document.createElement("p")
-      timeEl.className = "text-xs text-muted-foreground"
-      timeEl.textContent = `Position mise à jour à ${location.updatedAt.toLocaleTimeString("fr-FR")}`
-      info.append(nameEl, timeEl)
-      content.appendChild(info)
-
-      const marker = new Marker({ element })
-        .setLngLat([location.longitude, location.latitude])
-        .setPopup(new Popup({ offset: 12 }).setDOMContent(content))
-        .addTo(map)
-      friendMarkersRef.current.push(marker)
+    if (!map) return
+    map.flyTo({
+      center: [location.longitude, location.latitude],
+      // On ne dézoome jamais : l'ami reste un point identifiable.
+      zoom: Math.max(map.getZoom(), 15),
+      duration: prefersReducedMotion() ? 0 : 1400,
     })
   }, [])
+
+  const syncFriends = useCallback(
+    (locations: FriendLocation[] | null) => {
+      const map = mapRef.current
+      friendLocationsRef.current = locations
+      if (!map || !map.isStyleLoaded()) return
+
+      // Reconstruction complète à chaque lot : les amis sont peu nombreux
+      // (liste bornée) et une position retirée disparaît aussitôt.
+      for (const entry of friendsRef.current.values()) entry.marker.remove()
+      friendsRef.current.clear()
+      syncFriendAccuracy(map, locations)
+
+      if (!locations || locations.length === 0) return
+      const now = Date.now()
+      const count = Math.min(locations.length, MAX_FRIENDS_ON_MAP)
+      // Boucle bornée : au plus MAX_FRIENDS_ON_MAP marqueurs.
+      for (let index = 0; index < count; index += 1) {
+        const location = locations[index]
+        const popup = new Popup({ offset: 14, closeButton: true }).setDOMContent(
+          buildFriendPopupElement(location, now, () => flyToFriend(location))
+        )
+        const marker = new Marker({
+          element: buildFriendMarkerElement(location, now),
+        })
+          .setLngLat([location.longitude, location.latitude])
+          .setPopup(popup)
+          .addTo(map)
+        friendsRef.current.set(location.userId, { marker, popup })
+      }
+    },
+    [flyToFriend]
+  )
 
   // Rafraîchit les marqueurs à chaque lot de positions reçu ; les markers
   // sont retirés à la fermeture (le map.remove() de la carte les retire aussi).
   useEffect(() => {
-    syncFriendMarkers(friendLocations)
+    const friends = friendsRef.current
+    syncFriends(friendLocations)
     return () => {
-      friendMarkersRef.current.forEach((marker) => marker.remove())
-      friendMarkersRef.current = []
+      for (const entry of friends.values()) entry.marker.remove()
+      friends.clear()
       friendLocationsRef.current = null
     }
-  }, [friendLocations, syncFriendMarkers])
+  }, [friendLocations, syncFriends])
+
+  // --- Recentrage sur un ami demandé depuis la cloche ou un lien profond ---
+  useEffect(() => {
+    if (!focusedFriendId) return
+    // Carte pas encore prête : on garde la demande, l'effet repassera au load.
+    if (mapRef.current === null) return
+
+    const target = friendLocations?.find(
+      (location) => location.userId === focusedFriendId
+    )
+    if (target) {
+      flyToFriend(target)
+      const entry = friendsRef.current.get(target.userId)
+      if (entry && !entry.popup.isOpen()) entry.marker.togglePopup()
+      clearFriendFocus()
+      return
+    }
+
+    // Positions chargées mais l'ami absent : il ne partage pas (ou ne m'a pas
+    // autorisé). On le dit, plutôt que de laisser la carte immobile.
+    if (friendLocations !== null) {
+      clearFriendFocus()
+      toast.info("Cet ami ne partage pas sa position pour le moment.")
+    }
+  }, [focusNonce, focusedFriendId, friendLocations, flyToFriend, clearFriendFocus])
 
   useEffect(() => {
     const container = containerRef.current
@@ -556,6 +642,12 @@ export function CityMap({
       const quartier = quartiersByLowerName[q.trim().toLowerCase()]
       if (quartier) trafficEngine.selectQuartier(quartier)
     }
+
+    // Deep-link /map?friend=<id> (notification push « a partagé sa position ») :
+    // la demande de recentrage est déposée dans le store et appliquée dès que
+    // la position de l'ami est connue.
+    const friendId = new URLSearchParams(window.location.search).get("friend")
+    if (friendId) useMapFocusStore.getState().focusFriend(friendId)
 
     const isDarkNow = () =>
       forceDark
@@ -617,12 +709,20 @@ export function CityMap({
         const zoomControl = new NavigationControl({ showCompass: false })
         if (showControls) map.addControl(zoomControl, "top-right")
 
+        // Le style est reconstruit à chaque changement de thème (setStyle) : les
+        // sources GeoJSON repartent vides, on redessine les cercles de précision
+        // des amis (les marqueurs DOM, eux, survivent au setStyle).
+        const onStyleLoad = () => {
+          syncFriendAccuracy(map, friendLocationsRef.current)
+        }
+        map.on("style.load", onStyleLoad)
+
         let refreshTimer: ReturnType<typeof setInterval> | null = null
         map.on("load", () => {
           syncSelection(map, trafficEngine.getSnapshot().selected)
           onReady?.()
           // Les positions des amis arrivées avant le chargement de la carte.
-          syncFriendMarkers(friendLocationsRef.current)
+          syncFriends(friendLocationsRef.current)
           const c = map.getCenter()
           setView({ lon: c.lng, lat: c.lat, zoom: map.getZoom() })
           // Refresh périodique des tuiles (technique tag-ip) : MapLibre revalide
@@ -790,6 +890,7 @@ export function CityMap({
           if (showControls) map.removeControl(zoomControl)
           unsubscribeEngine()
           themeObserver.disconnect()
+          map.off("style.load", onStyleLoad)
           map.off("click", onMapClick)
           map.off("mousemove", onMouseMove)
           map.getCanvas().removeEventListener("mouseleave", onMouseLeave)
@@ -807,7 +908,7 @@ export function CityMap({
       disposed = true
       cleanup?.()
     }
-  }, [interactive, onReady, drift, forceDark, forceLight, showControls, syncFriendMarkers])
+  }, [interactive, onReady, drift, forceDark, forceLight, showControls, syncFriends])
 
   return (
     <MapContext.Provider value={{ view }}>
