@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   congestionLabel,
   congestionLevel,
+  formatAccuracy,
   formatRate,
   formatRelativeTime,
   formatSpeed,
@@ -33,6 +34,17 @@ describe("format", () => {
     expect(formatRelativeTime(500)).toBe("à l'instant")
     expect(formatRelativeTime(12_000)).toBe("il y a 12 s")
     expect(formatRelativeTime(90_000)).toBe("il y a 1 min")
+  })
+
+  it("formats a GPS accuracy without pretending to be exact", () => {
+    expect(formatAccuracy(8.4)).toBe("± 8 m")
+    expect(formatAccuracy(23)).toBe("± 25 m")
+    expect(formatAccuracy(2_400)).toBe("± 2.4 km")
+    // Une précision absente ou nulle est inconnue, jamais présentée comme exacte.
+    expect(formatAccuracy(null)).toBe("précision inconnue")
+    expect(formatAccuracy(undefined)).toBe("précision inconnue")
+    expect(formatAccuracy(0)).toBe("précision inconnue")
+    expect(formatAccuracy(Number.NaN)).toBe("précision inconnue")
   })
 })
 
