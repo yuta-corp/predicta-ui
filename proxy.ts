@@ -9,13 +9,22 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
  * (API trafic, webhooks) reste public, et l'authentification est vérifiée
  * au plus près de l'usage (server actions, route handlers). La carte est
  * protégée pour décourager le scraping des tuiles côté client.
+ *
+ * Redirection volontairement explicite plutôt que `auth.protect()` : `protect()`
+ * appelle Clerk sans `returnBackUrl`, donc après connexion l'utilisateur
+ * atterrit sur la page par défaut et perd la page demandée — un lien de
+ * position partagée reçu par un ami le renvoyait ainsi sur l'accueil. On passe
+ * l'URL courante en `returnBackUrl` pour revenir exactement là où il allait.
  */
 const isProtectedRoute = createRouteMatcher(["/friends(.*)", "/map(.*)", "/share(.*)"])
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect()
-  }
+  if (!isProtectedRoute(req)) return
+
+  const { userId, redirectToSignIn } = await auth()
+  if (userId) return
+
+  return redirectToSignIn({ returnBackUrl: req.url })
 })
 
 export const config = {
