@@ -81,7 +81,7 @@ export function startUserLocationPulse(map: MapLibreMap): () => void {
  * Conversion mètres → degrés avec compensation de latitude (1° de latitude
  * ≈ 111 320 m ; 1° de longitude ≈ 111 320 × cos(lat) m).
  */
-function accuracyCircle(
+export function accuracyCircle(
   lon: number,
   lat: number,
   meters: number

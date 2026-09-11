@@ -1,28 +1,35 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { MapPin, MapPinned } from "lucide-react"
+import { Crosshair, MapPin, MapPinned } from "lucide-react"
 import {
   Map as MapLibreMap,
-  Marker,
   NavigationControl,
   setWorkerUrl,
 } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { getSharedLocation } from "@/lib/actions/location"
+import { formatAccuracy, formatRelativeTime } from "@/lib/format"
+import { updateSharedPosition } from "@/lib/map/shared-position"
 import type { SharedLocation } from "@/lib/types/social"
 
 // Le worker MapLibre n'existe pas dans le bundle Turbopack (dev) — même
 // traitement que la ville : servi depuis /public et déclaré explicitement.
 setWorkerUrl("/maplibre-gl-worker.mjs")
 
-/** Cadence de rafraîchissement de la position partagée. */
+/** Cadence de rafraîchissement de la position partagée (côté serveur). */
 const POLL_MS = 30_000
 
+/** Cadence du compteur « mis à jour il y a … » (aucun appel serveur). */
+const AGE_TICK_MS = 5_000
+
 const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
+
+const INITIAL_ZOOM = 15
 
 interface ShareLiveViewProps {
   token: string
@@ -31,19 +38,34 @@ interface ShareLiveViewProps {
 /**
  * Vue en direct d'une position partagée par lien (URL /share/:token).
  * Protégée par l'auth Clerk : sans session, le middleware redirige vers la
- * connexion. Interroge l'action serveur régulièrement ; le token est le
- * secret, pas l'accès public.
+ * connexion en conservant l'URL de retour. Le token est le secret, pas l'accès
+ * public.
+ *
+ * La précision publiée est affichée telle quelle (cercle + « ± X m ») : jamais
+ * de point présenté comme exact alors qu'il ne l'est pas.
  */
 export function ShareLiveView({ token }: ShareLiveViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
-  const markerRef = useRef<Marker | null>(null)
+  const locationRef = useRef<SharedLocation | null>(null)
   const [location, setLocation] = useState<SharedLocation | null>(null)
   const [unavailable, setUnavailable] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
-  // Polling de la position ; la carte est créée à la réception du premier
-  // point (impératif, pas via le rendu), puis le marqueur se déplace.
+  /** Recentre la caméra sur la position partagée la plus récente. */
+  const recenter = useCallback(() => {
+    const map = mapRef.current
+    const target = locationRef.current
+    if (!map || !target) return
+    map.flyTo({
+      center: [target.longitude, target.latitude],
+      zoom: Math.max(map.getZoom(), INITIAL_ZOOM),
+      duration: 1200,
+    })
+  }, [])
+
+  // Polling de la position ; la carte est créée à la réception du premier point
+  // (impératif, pas via le rendu), puis le point se déplace.
   useEffect(() => {
     let disposed = false
 
@@ -53,38 +75,28 @@ export function ShareLiveView({ token }: ShareLiveViewProps) {
         if (disposed) return
         setUnavailable(next === null)
         setLocation(next)
+        locationRef.current = next
         if (!next) return
 
-        const { latitude, longitude } = next
         if (!mapRef.current && containerRef.current) {
           const map = new MapLibreMap({
             container: containerRef.current,
             style: BASEMAP_STYLE,
-            center: [longitude, latitude],
-            zoom: 15,
+            center: [next.longitude, next.latitude],
+            zoom: INITIAL_ZOOM,
             attributionControl: false,
           })
           map.addControl(new NavigationControl({ showCompass: false }), "top-right")
-
-          const element = document.createElement("div")
-          element.className =
-            "flex size-7 items-center justify-center rounded-full border-2 border-white bg-lime-500 shadow-md"
-          const dot = document.createElement("span")
-          dot.className = "size-2 rounded-full bg-white"
-          element.appendChild(dot)
-
-          markerRef.current = new Marker({ element })
-            .setLngLat([longitude, latitude])
-            .addTo(map)
+          map.on("load", () => updateSharedPosition(map, next))
           mapRef.current = map
-        } else if (markerRef.current) {
-          markerRef.current.setLngLat([longitude, latitude])
+        } else if (mapRef.current) {
+          updateSharedPosition(mapRef.current, next)
         }
       } catch {
-        if (!disposed) {
-          setUnavailable(true)
-          setLocation(null)
-        }
+        if (disposed) return
+        setUnavailable(true)
+        setLocation(null)
+        locationRef.current = null
       }
     }
 
@@ -95,23 +107,29 @@ export function ShareLiveView({ token }: ShareLiveViewProps) {
       clearInterval(poll)
       mapRef.current?.remove()
       mapRef.current = null
-      markerRef.current = null
+      locationRef.current = null
     }
   }, [token])
 
-  // Ré-affichage du « mis à jour il y a X » sans re-solliciter le serveur.
+  // Ré-affichage du « mis à jour il y a … » sans re-solliciter le serveur.
   useEffect(() => {
-    const tick = setInterval(() => setNow(Date.now()), 5_000)
+    const tick = setInterval(() => setNow(Date.now()), AGE_TICK_MS)
     return () => clearInterval(tick)
   }, [])
 
-  const ageSeconds = location ? Math.max(0, Math.floor((now - location.updatedAt.getTime()) / 1000)) : 0
-  const ageLabel =
-    ageSeconds < 60
-      ? `à l'instant`
-      : ageSeconds < 3600
-        ? `il y a ${Math.floor(ageSeconds / 60)} min`
-        : `il y a ${Math.floor(ageSeconds / 3600)} h`
+  const ageLabel = useMemo(
+    () =>
+      location
+        ? formatRelativeTime(Math.max(0, now - location.updatedAt.getTime()))
+        : "",
+    [location, now]
+  )
+
+  const subtitle = location
+    ? `Mise à jour ${ageLabel} · ${formatAccuracy(location.accuracy)}`
+    : unavailable
+      ? "Cette position n'est actuellement pas disponible."
+      : "Chargement de la position…"
 
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col px-4 py-6">
@@ -131,18 +149,23 @@ export function ShareLiveView({ token }: ShareLiveViewProps) {
             <AvatarFallback>{location?.sharerName.charAt(0) ?? "?"}</AvatarFallback>
           )}
         </Avatar>
-        <div>
-          <h1 className="text-base font-semibold sm:text-lg">
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-base font-semibold sm:text-lg">
             {location ? `${location.sharerName} partage sa position` : "Position partagée"}
           </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            {location
-              ? `Mise à jour ${ageLabel}`
-              : unavailable
-                ? "Cette position n'est actuellement pas disponible."
-                : "Chargement de la position…"}
+          <p
+            aria-live="polite"
+            className="text-xs text-muted-foreground sm:text-sm"
+          >
+            {subtitle}
           </p>
         </div>
+        {location && (
+          <Button size="sm" variant="outline" onClick={recenter}>
+            <Crosshair className="h-3.5 w-3.5" aria-hidden />
+            Recentrer
+          </Button>
+        )}
       </section>
 
       <div
