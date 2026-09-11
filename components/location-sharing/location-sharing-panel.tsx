@@ -1,10 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Copy, Link2, MapPin, Share2 } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Copy, Link2, Loader2, MapPin, Share2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { useLocationSharing } from "@/components/location-sharing-provider"
+import { SHARE_INTERVAL_MS } from "@/lib/location-constants"
+import { useLocationSharingStore } from "@/lib/store/location-sharing"
 import {
   createLocationLink,
   getMyLocationLink,
@@ -39,7 +41,7 @@ interface LocationSharingPanelProps {
  * (Protégé par l'auth Clerk ; partageable via Facebook / Messenger).
  */
 export function LocationSharingPanel({ compact = false }: LocationSharingPanelProps) {
-  const { isSharing, error, startSharing, stopSharing } = useLocationSharing()
+  const { isSharing, phase, error, startSharing, stopSharing } = useLocationSharing()
 
   const [open, setOpen] = useState(false)
   const [friends, setFriends] = useState<Friend[]>([])
@@ -81,18 +83,20 @@ export function LocationSharingPanel({ compact = false }: LocationSharingPanelPr
   const handleToggleSharing = async (pressed: boolean) => {
     setToggling(true)
     try {
-      if (pressed) {
-        const ok = await startSharing()
-        if (ok) toast.success("Partage de position activé")
-        else
-          toast.error(
-            "Impossible d'accéder à votre position. Autorisez la géolocalisation dans votre navigateur."
-          )
-      } else {
-        const ok = await stopSharing()
-        if (ok) toast.success("Partage de position désactivé")
-        else toast.error("Impossible d'arrêter le partage pour le moment.")
+      const ok = pressed ? await startSharing() : await stopSharing()
+      if (ok) {
+        toast.success(
+          pressed ? "Partage de position activé" : "Partage de position désactivé"
+        )
+        return
       }
+      // L'erreur précise est posée par la session de partage (permission,
+      // réseau…) : on relaie ce message plutôt qu'un texte générique qui
+      // pourrait contredire la cause réelle.
+      const failure =
+        useLocationSharingStore.getState().error ??
+        "Le partage de position n'a pas pu être modifié."
+      toast.error(failure)
     } finally {
       setToggling(false)
     }
@@ -127,9 +131,14 @@ export function LocationSharingPanel({ compact = false }: LocationSharingPanelPr
 
   const allChecked = friends.length > 0 && viewers.length === friends.length
 
-  const shareUrl = linkToken
-    ? new URL(`/share/${linkToken}`, window.location.origin).toString()
-    : ""
+  // Les URL sont dérivées du token : jamais d'accès à `window` au rendu.
+  const shareUrl = useMemo(
+    () =>
+      linkToken && typeof window !== "undefined"
+        ? new URL(`/share/${linkToken}`, window.location.origin).toString()
+        : "",
+    [linkToken]
+  )
   const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
   const messengerShareUrl = `https://www.messenger.com/share?link=${encodeURIComponent(shareUrl)}`
 
@@ -165,6 +174,13 @@ export function LocationSharingPanel({ compact = false }: LocationSharingPanelPr
   }
 
   const triggerLabel = isSharing ? "Partage actif" : "Partager"
+  const intervalSeconds = Math.round(SHARE_INTERVAL_MS / 1000)
+  const sharingDescription =
+    phase === "sharing"
+      ? `En cours — mise à jour toutes les ${intervalSeconds} s`
+      : phase === "locating"
+        ? "Recherche de votre position…"
+        : "Partage éteint"
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -199,23 +215,30 @@ export function LocationSharingPanel({ compact = false }: LocationSharingPanelPr
           <PopoverDescription>
             Vos amis voient votre position en temps réel sur la carte.
           </PopoverDescription>
-        </PopoverHeader>
-
-        {error && (
-          <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
-            {error}
-          </p>
-        )}
+        </PopoverHeader>          {error && (
+            <p
+              role="alert"
+              aria-live="polite"
+              className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+            >
+              {error}
+            </p>
+          )}
 
         <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
           <div>
-            <p className="text-[13px] font-medium">Partager ma position</p>
-            <p className="text-xs text-muted-foreground">
-              {isSharing ? "En cours — mise à jour toutes les 30 s" : "Partage éteint"}
+            <p className="flex items-center gap-1.5 text-[13px] font-medium">
+              {phase === "locating" && (
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+              )}
+              Partager ma position
             </p>
+            <p className="text-xs text-muted-foreground">{sharingDescription}</p>
           </div>
           <Switch
             checked={isSharing}
+            aria-label="Partager ma position"
+            aria-busy={phase === "locating" || toggling}
             onCheckedChange={(checked) => void handleToggleSharing(checked)}
             disabled={toggling}
           />

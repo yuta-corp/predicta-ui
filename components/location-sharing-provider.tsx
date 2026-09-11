@@ -1,185 +1,74 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import { useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 
-import { stopLocationSharing, updateLocation } from "@/lib/actions/location"
-import { createPositionFilter, type PositionFix } from "@/lib/map/position-filter"
-
-const SHARE_INTERVAL_MS = 30_000
+import {
+  publishSharingNow,
+  useLocationSharingStore,
+  type SharingPhase,
+} from "@/lib/store/location-sharing"
 
 /**
- * Options de géolocalisation « précision maximale » : haute précision (GPS),
- * aucun cache (`maximumAge: 0` → chaque fix est frais) et un timeout généreux
- * — le capteur a le temps d'acquérir les satellites au lieu de rendre un fix
- * réseau approximatif faute de temps.
+ * Session de partage de position — colle entre Clerk et le store.
+ *
+ * Le composant ne rend rien de visible : il déclare l'utilisateur courant au
+ * store (qui coupe la session GPS à la déconnexion et reprend un partage resté
+ * actif côté serveur après un rafraîchissement) et réveille la publication
+ * quand l'onglet revient au premier plan ou que le réseau revient.
+ *
+ * L'état lui-même vit dans `useLocationSharingStore` : n'importe quel composant
+ * peut le lire sans traverser l'arbre des providers.
  */
-const GEO_OPTIONS = {
-  enableHighAccuracy: true,
-  maximumAge: 0,
-  timeout: 30_000,
-} as const
+export function LocationSharingProvider({ children }: { children: React.ReactNode }) {
+  const { isLoaded, user } = useUser()
+  const userId = user?.id ?? null
 
-interface LocationSharingContextValue {
+  useEffect(() => {
+    if (!isLoaded) return
+    useLocationSharingStore.getState().setUser(userId)
+  }, [isLoaded, userId])
+
+  // Le navigateur bride les intervalles en arrière-plan : en revenant au premier
+  // plan (ou après une coupure réseau), on republie sans attendre le prochain tic.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") publishSharingNow()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    window.addEventListener("online", publishSharingNow)
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility)
+      window.removeEventListener("online", publishSharingNow)
+    }
+  }, [])
+
+  // Départ de l'application : capteur coupé, aucune surveillance fantôme.
+  useEffect(() => {
+    return () => {
+      useLocationSharingStore.getState().setUser(null)
+    }
+  }, [])
+
+  return <>{children}</>
+}
+
+interface LocationSharing {
+  /** Vrai dès que le partage est demandé (acquisition comprise). */
   isSharing: boolean
+  /** Phase précise, pour distinguer « recherche de position » de « partagé ». */
+  phase: SharingPhase
   error: string | null
   startSharing: () => Promise<boolean>
   stopSharing: () => Promise<boolean>
 }
 
-const LocationSharingContext = createContext<LocationSharingContextValue | null>(null)
+/** État et actions du partage de position, lus depuis le store partagé. */
+export function useLocationSharing(): LocationSharing {
+  const phase = useLocationSharingStore((state) => state.phase)
+  const error = useLocationSharingStore((state) => state.error)
+  const startSharing = useLocationSharingStore((state) => state.startSharing)
+  const stopSharing = useLocationSharingStore((state) => state.stopSharing)
 
-function positionToFix(position: GeolocationPosition): PositionFix {
-  return {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-    accuracy: position.coords.accuracy,
-    timestamp: position.timestamp,
-  }
-}
-
-/**
- * État unique du partage de position : dès le début du partage, un
- * `watchPosition` haute précision est lancé et reste actif — le GPS affine la
- * position en continu, chaque nouveau fix remplace le candidat du tour suivant.
- *
- * Publication immédiate du premier fix, puis toutes les 30 s : le fix le plus
- * précis *à l'instant de la publication* passe par un filtre anti-régression
- * (on ne redégrade jamais la précision déjà publiée, sauf rassissement), la
- * position partagée ne « tremble » pas au mètre près.
- *
- * `startSharing`/`stopSharing` renvoient `true` en cas de succès réel : établi
- * seulement si la première position a bien été publiée.
- */
-export function LocationSharingProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const { user } = useUser()
-  const [isSharing, setIsSharing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const watchIdRef = useRef<number | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const latestFixRef = useRef<PositionFix | null>(null)
-  const lastPublishedRef = useRef<PositionFix | null>(null)
-  const filterRef = useRef(createPositionFilter())
-
-  const clearWatch = useCallback(() => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current)
-      watchIdRef.current = null
-    }
-  }, [])
-
-  /** Publie le fix courant (filtré), ou le dernier publié si le fil le refuse. */
-  const publishLatest = useCallback(async () => {
-    const latest = latestFixRef.current
-    if (!latest) return
-    const accepted =
-      filterRef.current.next(latest) ?? lastPublishedRef.current ?? latest
-    lastPublishedRef.current = accepted
-    await updateLocation(accepted.latitude, accepted.longitude, accepted.accuracy)
-  }, [])
-
-  const stopSharing = useCallback(async (): Promise<boolean> => {
-    clearWatch()
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-    latestFixRef.current = null
-    lastPublishedRef.current = null
-    filterRef.current.reset()
-    setIsSharing(false)
-    setError(null)
-    try {
-      await stopLocationSharing()
-      return true
-    } catch (err) {
-      console.error("Échec de l'arrêt du partage de position :", err)
-      setError("Impossible d'arrêter le partage pour le moment.")
-      return false
-    }
-  }, [clearWatch])
-
-  const startSharing = useCallback(async (): Promise<boolean> => {
-    if (!user?.id || isSharing) return false
-
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      setError("La géolocalisation n'est pas supportée par ce navigateur.")
-      return false
-    }
-
-    setError(null)
-    try {
-      // Le watchPosition est le capteur principal : il fournit le premier fix
-      // et continue de raffiner la précision tant que le partage est actif.
-      const firstFix = await new Promise<PositionFix>((resolve, reject) => {
-        let settled = false
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          (position) => {
-            const fix = positionToFix(position)
-            latestFixRef.current = fix
-            if (!settled) {
-              settled = true
-              resolve(fix)
-            }
-          },
-          (err) => {
-            if (settled) return
-            settled = true
-            clearWatch()
-            reject(err)
-          },
-          GEO_OPTIONS
-        )
-      })
-
-      await updateLocation(firstFix.latitude, firstFix.longitude, firstFix.accuracy)
-      lastPublishedRef.current = firstFix
-      setIsSharing(true)
-      intervalRef.current = setInterval(() => {
-        void publishLatest().catch((err) => {
-          console.error("Échec de la mise à jour de la position :", err)
-          setError("La mise à jour de votre position échoue. Vérifiez votre connexion.")
-        })
-      }, SHARE_INTERVAL_MS)
-      return true
-    } catch {
-      clearWatch()
-      setError(
-        "Impossible d'accéder à votre position. Autorisez la géolocalisation dans votre navigateur."
-      )
-      return false
-    }
-  }, [user?.id, isSharing, clearWatch, publishLatest])
-
-  // Nettoyage du watch et de l'interval à la fermeture du composant.
-  useEffect(() => {
-    return () => {
-      clearWatch()
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [clearWatch])
-
-  return (
-    <LocationSharingContext.Provider
-      value={{ isSharing, error, startSharing, stopSharing }}
-    >
-      {children}
-    </LocationSharingContext.Provider>
-  )
-}
-
-export function useLocationSharing(): LocationSharingContextValue {
-  const context = useContext(LocationSharingContext)
-
-  if (!context) {
-    throw new Error(
-      "useLocationSharing doit être utilisé à l'intérieur de <LocationSharingProvider>."
-    )
-  }
-
-  return context
+  return { isSharing: phase !== "off", phase, error, startSharing, stopSharing }
 }

@@ -76,6 +76,27 @@ export async function stopLocationSharing(): Promise<void> {
 }
 
 /**
+ * Le partage de l'utilisateur courant est-il actif ?
+ *
+ * Source de vérité de l'état partagé : une position fraîche en base signifie
+ * que le partage tourne encore (quel que soit l'onglet ou l'appareil). C'est
+ * ce que consulte l'application au chargement pour restaurer l'état du bouton
+ * et reprendre la publication, au lieu de faire confiance à l'état local d'une
+ * page qui vient d'être rechargée.
+ */
+export async function getMyLocationSharing(): Promise<boolean> {
+  const userId = await requireUserId()
+
+  const share = await prisma.locationShare.findUnique({
+    where: { userId },
+    select: { updatedAt: true },
+  })
+  if (!share) return false
+
+  return Date.now() - share.updatedAt.getTime() <= LOCATION_TTL_MS
+}
+
+/**
  * Remplace la liste des amis autorisés à me voir. Seuls les amis acceptés
  * peuvent être ajoutés (un non-ami ne peut jamais devenir viewer).
  * La sélection est conservée (les lignes ne sont pas supprimées à l'arrêt
