@@ -74,7 +74,14 @@ beforeEach(() => {
     profileImageUrl: null,
     email: "dummy@example.com",
   })
-  friendshipMock.create.mockResolvedValue({ id: "friendship_1" })
+  friendshipMock.create.mockResolvedValue({
+    id: "friendship_1",
+    createdAt: new Date("2026-09-05T10:00:00Z"),
+  })
+  friendshipMock.update.mockResolvedValue({
+    id: "friendship_1",
+    updatedAt: new Date("2026-09-05T10:00:00Z"),
+  })
 })
 
 describe("sendFriendRequest", () => {
@@ -174,7 +181,10 @@ describe("sendFriendRequest", () => {
           : null
     )
     friendshipMock.findFirst.mockResolvedValue(null)
-    friendshipMock.create.mockResolvedValue({ id: "friendship_7" })
+    friendshipMock.create.mockResolvedValue({
+      id: "friendship_7",
+      createdAt: new Date("2026-09-05T10:00:00Z"),
+    })
 
     await sendFriendRequest("user_target")
 
@@ -232,7 +242,8 @@ describe("acceptFriendRequest", () => {
     expect(sendPushToUserMock).toHaveBeenCalledWith(
       "user_target",
       expect.objectContaining({
-        id: "accepted:friendship_1",
+        // L'entrée est ciblée sur l'ami qui a accepté : « Voir » ouvre sa fiche.
+        id: expect.stringContaining("accepted:user_requester"),
         title: expect.stringContaining("dummy Rakoto"),
       })
     )

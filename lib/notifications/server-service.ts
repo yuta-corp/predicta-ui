@@ -2,7 +2,7 @@ import { getAcceptedFriendIds, displayName, userProfileSelect } from "@/lib/acti
 import {
   acceptedEntry,
   requestEntry,
-  sharingEntry,
+  sharingEntryFromLocation,
   type NotificationEntry,
 } from "@/lib/notifications/events"
 import { prisma } from "@/lib/prisma"
@@ -128,12 +128,27 @@ export function buildEvents(
   const events: NotificationEntry[] = []
 
   for (const request of requests) {
-    if (request.createdAt.getTime() > sinceMs) events.push(requestEntry(request))
+    if (request.createdAt.getTime() <= sinceMs) continue
+    events.push(
+      requestEntry({
+        requestId: request.id,
+        fromUserId: request.fromUserId,
+        fromName: request.fromName,
+        createdAt: request.createdAt,
+      })
+    )
   }
   for (const item of accepted) {
-    if (item.acceptedAt.getTime() > sinceMs) events.push(acceptedEntry(item))
+    if (item.acceptedAt.getTime() <= sinceMs) continue
+    events.push(
+      acceptedEntry({
+        friendId: item.friendId,
+        friendName: item.friendName,
+        acceptedAt: item.acceptedAt,
+      })
+    )
   }
-  for (const sharer of sharers) events.push(sharingEntry(sharer))
+  for (const sharer of sharers) events.push(sharingEntryFromLocation(sharer))
 
   return events
 }

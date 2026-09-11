@@ -13,9 +13,16 @@ export interface PushPayload {
   body?: string
 }
 
-/** Dérive le payload push d'une entrée de notification SSE (source unique). */
+/**
+ * Dérive le payload push d'une entrée de notification SSE (source unique).
+ * Un partage de position ouvre la carte **centrée sur l'ami** concerné, pas la
+ * carte générique ni la liste d'amis.
+ */
 export function pushPayloadFromEntry(entry: NotificationEntry): PushPayload {
-  const url = entry.kind === "sharing" ? "/map" : "/friends"
+  const url =
+    entry.kind === "sharing"
+      ? `/map?friend=${encodeURIComponent(entry.actorId)}`
+      : "/friends"
   return { id: entry.id, title: entry.title, url }
 }
 

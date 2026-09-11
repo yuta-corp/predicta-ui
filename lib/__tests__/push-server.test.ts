@@ -40,6 +40,7 @@ vi.mock("@/lib/prisma", () => ({
 }))
 
 import {
+  pushPayloadFromEntry,
   removePushSubscription,
   savePushSubscription,
   sendPushToUser,
@@ -49,12 +50,42 @@ import type { NotificationEntry } from "@/lib/notifications/events"
 const entry: NotificationEntry = {
   id: "request:f1",
   kind: "request",
+  actorId: "user_jean",
+  createdAt: 1_788_000_000_000,
   title: "Jean vous a envoyé une demande d'ami.",
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   pushSubscriptionMock.findMany.mockResolvedValue([])
+})
+
+describe("pushPayloadFromEntry", () => {
+  it("ouvre la carte centrée sur l'ami qui partage sa position", () => {
+    const payload = pushPayloadFromEntry({
+      id: "sharing:user_jean",
+      kind: "sharing",
+      actorId: "user_jean",
+      createdAt: 1,
+      title: "Jean a commencé à partager sa position.",
+    })
+
+    expect(payload.url).toBe("/map?friend=user_jean")
+  })
+
+  it("ouvre la liste d'amis pour une demande d'ami", () => {
+    expect(pushPayloadFromEntry(entry).url).toBe("/friends")
+  })
+
+  it("encode l'identifiant dans l'URL", () => {
+    const payload = pushPayloadFromEntry({
+      ...entry,
+      kind: "sharing",
+      actorId: "user/a b",
+    })
+
+    expect(payload.url).toBe("/map?friend=user%2Fa%20b")
+  })
 })
 
 describe("savePushSubscription", () => {

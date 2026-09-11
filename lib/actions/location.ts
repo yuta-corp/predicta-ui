@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/helpers"
 import { prisma } from "@/lib/prisma"
 import { LOCATION_TTL_MS } from "@/lib/location-constants"
+import { sharingEntry } from "@/lib/notifications/events"
 import { pushPayloadFromEntry, sendPushToUser } from "@/lib/push/server"
 import type { FriendLocation, SharedLocation } from "@/lib/types/social"
 
@@ -249,11 +250,15 @@ async function notifySharingStarted(shareUserId: string) {
   })
   if (!sharer) return
 
-  const payload = pushPayloadFromEntry({
-    id: `sharing:${shareUserId}`,
-    kind: "sharing",
-    title: `${displayName(sharer)} a commencé à partager sa position.`,
-  })
+  // Même constructeur que le flux SSE : un seul libellé, une seule cible
+  // (« Voir » ouvre la carte centrée sur ce partageur).
+  const payload = pushPayloadFromEntry(
+    sharingEntry({
+      userId: shareUserId,
+      name: displayName(sharer),
+      startedAt: new Date(),
+    })
+  )
   await Promise.all(
     viewerRows.map((row) => sendPushToUser(row.viewerUserId, payload))
   )
