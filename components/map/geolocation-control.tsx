@@ -8,6 +8,7 @@ import {
   updateUserLocationSource,
 } from "@/lib/map/user-location"
 import { createPositionFilter } from "@/lib/map/position-filter"
+import { messageFromGeoError } from "@/lib/map/geolocation-messages"
 import { haversineKm } from "@/lib/geo"
 
 /** Distance minimale de déplacement (m) avant de recentrer la caméra. */
@@ -18,16 +19,6 @@ const FOLLOW_THRESHOLD_M = 30
  * se recentre pas sur lui — la carte reste libre d'être explorée.
  */
 const RECENTER_PAUSE_MS = 8_000
-
-/** Messages d'erreur humains, par code GeolocationPositionError. */
-export const ERROR_MESSAGES: Record<number, string> = {
-  1: "Localisation refusée. Autorisez l'accès à votre position puis réessayez.",
-  2: "Impossible de connaître votre position sur cet appareil.",
-  3: "Votre position n'a pas pu être déterminée. Réessayez dans un instant.",
-}
-
-export const DEFAULT_ERROR =
-  "Un problème est survenu avec la localisation. Réessayez dans un instant."
 
 function reducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -215,9 +206,7 @@ export function GeolocationControl() {
       (err) => {
         toast.dismiss(loadingToastId)
         setStatus("idle")
-        toast.error(ERROR_MESSAGES[err.code] ?? DEFAULT_ERROR, {
-          duration: 6000,
-        })
+        toast.error(messageFromGeoError(err), { duration: 6000 })
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }
     )
