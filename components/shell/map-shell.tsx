@@ -13,6 +13,8 @@ import { MapControls } from "@/components/map/map-controls"
 import { GeolocationControl } from "@/components/map/geolocation-control"
 import { MapLegend } from "@/components/map/map-legend"
 import { useMap } from "@/components/map/city-map"
+import { OnboardingTour } from "@/components/tour/onboarding-tour"
+import { TourTrigger } from "@/components/tour/tour-trigger"
 import { formatCoordinates } from "@/lib/format"
 
 const CityMap = dynamic(
@@ -61,6 +63,7 @@ export function MapShell({ children }: { children: React.ReactNode }) {
           <div className="pointer-events-auto flex items-center gap-3">
             <AuthCluster compact />
             <Search />
+            <TourTrigger />
             <Link
               href="/status"
               className="hidden rounded-sm px-2 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground sm:block"
@@ -101,6 +104,9 @@ export function MapShell({ children }: { children: React.ReactNode }) {
         {/* Contenu de page (overlays) */}
         <div className="absolute inset-0">{children}</div>
       </div>
+
+      {/* Visite guidée des nouveaux utilisateurs */}
+      <OnboardingTour />
     </main>
   )
 }
