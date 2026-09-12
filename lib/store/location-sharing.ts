@@ -270,19 +270,30 @@ interface LocationSharingState {
   stopSharing: () => Promise<boolean>
 }
 
-export const useLocationSharingStore = create<LocationSharingState>((set, get) => ({
-  userId: null,
-  phase: "off",
-  error: null,
+type SharingSet = (partial: Partial<LocationSharingState>) => void
+type SharingGet = () => LocationSharingState
 
-  setUser: (userId) => {
+interface SharingContext {
+  set: SharingSet
+  get: SharingGet
+}
+
+/** Change d'utilisateur : coupe la session locale et resynchronise. */
+function createSetUser({ set, get }: SharingContext) {
+  return (userId: string | null) => {
     if (get().userId === userId) return
     clearSession()
     set({ userId, phase: "off", error: null })
     if (userId !== null) void get().syncFromServer()
-  },
+  }
+}
 
-  syncFromServer: async () => {
+/**
+ * Reprend le partage si le serveur en garde la trace (rafraîchissement de page,
+ * autre onglet) — la base est la source de vérité de l'état partagé.
+ */
+function createSyncFromServer({ get }: Pick<SharingContext, "get">) {
+  return async () => {
     const { userId, phase } = get()
     if (userId === null || phase !== "off") return
     try {
@@ -294,9 +305,12 @@ export const useLocationSharingStore = create<LocationSharingState>((set, get) =
     } catch (err) {
       console.error("[location] état du partage indisponible :", err)
     }
-  },
+  }
+}
 
-  startSharing: async () => {
+/** Active le partage (permission + premier fix + publication). */
+function createStartSharing({ set, get }: SharingContext) {
+  return async () => {
     const { userId, phase } = get()
     if (userId === null || phase !== "off") return false
     if (!hasGeolocation()) {
@@ -329,9 +343,12 @@ export const useLocationSharingStore = create<LocationSharingState>((set, get) =
 
     set({ phase: "sharing" })
     return true
-  },
+  }
+}
 
-  stopSharing: async () => {
+/** Désactive le partage et supprime la position publiée. */
+function createStopSharing({ set, get }: SharingContext) {
+  return async () => {
     const wasActive = get().phase !== "off"
     clearSession()
     set({ phase: "off", error: null })
@@ -344,7 +361,17 @@ export const useLocationSharingStore = create<LocationSharingState>((set, get) =
       set({ error: STOP_FAILED_MESSAGE })
       return false
     }
-  },
+  }
+}
+
+export const useLocationSharingStore = create<LocationSharingState>((set, get) => ({
+  userId: null,
+  phase: "off",
+  error: null,
+  setUser: createSetUser({ set, get }),
+  syncFromServer: createSyncFromServer({ get }),
+  startSharing: createStartSharing({ set, get }),
+  stopSharing: createStopSharing({ set, get }),
 }))
 
 /**

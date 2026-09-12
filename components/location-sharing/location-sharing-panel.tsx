@@ -1,25 +1,19 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Copy, Link2, Loader2, MapPin, Share2 } from "lucide-react"
+import { useState } from "react"
+import { MapPin } from "lucide-react"
 import { toast } from "sonner"
 
 import { useLocationSharing } from "@/components/location-sharing-provider"
-import { SHARE_INTERVAL_MS } from "@/lib/location-constants"
-import { useLocationSharingStore } from "@/lib/store/location-sharing"
+import { ShareLinkSection } from "@/components/location-sharing/share-link-section"
 import {
-  createLocationLink,
-  getMyLocationLink,
-  getShareViewers,
-  revokeLocationLink,
-  setShareViewers,
-} from "@/lib/actions/location"
-import { listFriends } from "@/lib/actions/friends"
-import type { Friend } from "@/lib/types/social"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
+  SharingToggle,
+  ViewerPicker,
+} from "@/components/location-sharing/sharing-controls"
+import {
+  useSharingSettings,
+  type SharingSettings,
+} from "@/components/location-sharing/use-sharing-settings"
 import {
   Popover,
   PopoverContent,
@@ -28,57 +22,122 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Switch } from "@/components/ui/switch"
+import {
+  useLocationSharingStore,
+  type SharingPhase,
+} from "@/lib/store/location-sharing"
 import { cn } from "@/lib/utils"
 
 interface LocationSharingPanelProps {
   compact?: boolean
 }
 
+interface SharingTriggerProps {
+  compact: boolean
+  isSharing: boolean
+  open: boolean
+}
+
+function SharingTrigger({ compact, isSharing, open }: SharingTriggerProps) {
+  const label = isSharing ? "Partage actif" : "Partager"
+  return (
+    <PopoverTrigger asChild>
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className={cn(
+          "inline-flex shrink-0 items-center rounded-full text-[13px] font-medium transition-colors",
+          compact
+            ? "h-7 w-7 justify-center hover:bg-foreground/5"
+            : "gap-1.5 rounded-sm px-2 py-1.5 hover:text-foreground",
+          isSharing ? "text-primary" : "text-foreground"
+        )}
+      >
+        {compact ? (
+          <MapPin className="h-4 w-4" aria-hidden />
+        ) : (
+          <>
+            <MapPin className="h-3.5 w-3.5" aria-hidden />
+            {label}
+          </>
+        )}
+      </button>
+    </PopoverTrigger>
+  )
+}
+
+interface SharingPanelContentProps {
+  error: string | null
+  phase: SharingPhase
+  isSharing: boolean
+  toggling: boolean
+  onToggle: (pressed: boolean) => void
+  settings: SharingSettings
+}
+
+/** Contenu du popover : titre, erreur, interrupteur, audience, lien. */
+function SharingPanelContent({
+  error,
+  phase,
+  isSharing,
+  toggling,
+  onToggle,
+  settings,
+}: SharingPanelContentProps) {
+  return (
+    <PopoverContent align="end" className="w-[340px]">
+      <PopoverHeader>
+        <PopoverTitle>Partage de position</PopoverTitle>
+        <PopoverDescription>
+          Vos amis voient votre position en temps réel sur la carte.
+        </PopoverDescription>
+      </PopoverHeader>
+
+      {error && (
+        <p
+          role="alert"
+          aria-live="polite"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+        >
+          {error}
+        </p>
+      )}
+
+      <SharingToggle
+        phase={phase}
+        isSharing={isSharing}
+        toggling={toggling}
+        onToggle={onToggle}
+      />
+
+      <ViewerPicker
+        friends={settings.friends}
+        viewers={settings.viewers}
+        onToggleViewer={settings.toggleViewer}
+        onToggleAll={settings.toggleAllViewers}
+      />
+
+      <ShareLinkSection
+        token={settings.linkToken}
+        loading={settings.loading}
+        onCreate={() => void settings.createLink()}
+        onRevoke={() => void settings.revokeLink()}
+      />
+    </PopoverContent>
+  )
+}
+
 /**
  * Panneau de partage de position : interrupteur on/off, sélection des amis
- * autorisés à voir (ciblé ou « tous mes amis ») et partage par lien
- * (Protégé par l'auth Clerk ; partageable via Facebook / Messenger).
+ * autorisés à voir (ciblé ou « tous mes amis ») et partage par lien.
  */
 export function LocationSharingPanel({ compact = false }: LocationSharingPanelProps) {
   const { isSharing, phase, error, startSharing, stopSharing } = useLocationSharing()
-
   const [open, setOpen] = useState(false)
-  const [friends, setFriends] = useState<Friend[]>([])
-  const [viewers, setViewers] = useState<string[]>([])
-  const [linkToken, setLinkToken] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(false)
-
-  // (Re)charge les réglages du partage à chaque ouverture.
-  useEffect(() => {
-    if (!open) return
-    let cancelled = false
-    void (async () => {
-      try {
-        const [loadedFriends, loadedViewers, loadedLink] = await Promise.all([
-          listFriends(),
-          getShareViewers(),
-          getMyLocationLink(),
-        ])
-        if (cancelled) return
-        setFriends(loadedFriends)
-        setViewers(loadedViewers)
-        setLinkToken(loadedLink)
-      } catch (err) {
-        if (!cancelled) {
-          toast.error(
-            err instanceof Error ? err.message : "Impossible de charger les réglages du partage."
-          )
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [open])
+  const settings = useSharingSettings(open)
 
   const handleToggleSharing = async (pressed: boolean) => {
     setToggling(true)
@@ -91,241 +150,27 @@ export function LocationSharingPanel({ compact = false }: LocationSharingPanelPr
         return
       }
       // L'erreur précise est posée par la session de partage (permission,
-      // réseau…) : on relaie ce message plutôt qu'un texte générique qui
-      // pourrait contredire la cause réelle.
-      const failure =
+      // réseau…) : on relaie ce message plutôt qu'un texte générique.
+      toast.error(
         useLocationSharingStore.getState().error ??
-        "Le partage de position n'a pas pu être modifié."
-      toast.error(failure)
+          "Le partage de position n'a pas pu être modifié."
+      )
     } finally {
       setToggling(false)
     }
   }
 
-  const persistViewers = useCallback(
-    async (next: string[], prev: string[]) => {
-      setViewers(next)
-      try {
-        await setShareViewers(next)
-      } catch (err) {
-        setViewers(prev)
-        toast.error(
-          err instanceof Error ? err.message : "Impossible d'enregistrer la sélection."
-        )
-      }
-    },
-    []
-  )
-
-  const toggleViewer = (friendId: string, checked: boolean) => {
-    const next = checked
-      ? [...viewers, friendId]
-      : viewers.filter((id) => id !== friendId)
-    void persistViewers(next, viewers)
-  }
-
-  const toggleAllViewers = (checked: boolean) => {
-    const next = checked ? friends.map((friend) => friend.userId) : []
-    void persistViewers(next, viewers)
-  }
-
-  const allChecked = friends.length > 0 && viewers.length === friends.length
-
-  // Les URL sont dérivées du token : jamais d'accès à `window` au rendu.
-  const shareUrl = useMemo(
-    () =>
-      linkToken && typeof window !== "undefined"
-        ? new URL(`/share/${linkToken}`, window.location.origin).toString()
-        : "",
-    [linkToken]
-  )
-  const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
-  const messengerShareUrl = `https://www.messenger.com/share?link=${encodeURIComponent(shareUrl)}`
-
-  const handleCreateLink = async () => {
-    try {
-      const token = await createLocationLink()
-      setLinkToken(token)
-      toast.success("Lien de partage créé")
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Impossible de créer le lien.")
-    }
-  }
-
-  const handleRevokeLink = async () => {
-    if (!linkToken) return
-    const token = linkToken
-    try {
-      await revokeLocationLink(token)
-      setLinkToken(null)
-      toast.success("Lien révoqué")
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Impossible de révoquer le lien.")
-    }
-  }
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      toast.success("Lien copié")
-    } catch {
-      toast.error("Impossible de copier le lien.")
-    }
-  }
-
-  const triggerLabel = isSharing ? "Partage actif" : "Partager"
-  const intervalSeconds = Math.round(SHARE_INTERVAL_MS / 1000)
-  const sharingDescription =
-    phase === "sharing"
-      ? `En cours — mise à jour toutes les ${intervalSeconds} s`
-      : phase === "locating"
-        ? "Recherche de votre position…"
-        : "Partage éteint"
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={triggerLabel}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          className={cn(
-            "inline-flex shrink-0 items-center rounded-full text-[13px] font-medium transition-colors",
-            compact
-              ? "h-7 w-7 justify-center hover:bg-foreground/5"
-              : "gap-1.5 rounded-sm px-2 py-1.5 hover:text-foreground",
-            isSharing ? "text-primary" : "text-foreground"
-          )}
-        >
-          {compact ? (
-            <MapPin className="h-4 w-4" aria-hidden />
-          ) : (
-            <>
-              <MapPin className="h-3.5 w-3.5" aria-hidden />
-              {triggerLabel}
-            </>
-          )}
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent align="end" className="w-[340px]">
-        <PopoverHeader>
-          <PopoverTitle>Partage de position</PopoverTitle>
-          <PopoverDescription>
-            Vos amis voient votre position en temps réel sur la carte.
-          </PopoverDescription>
-        </PopoverHeader>          {error && (
-            <p
-              role="alert"
-              aria-live="polite"
-              className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
-            >
-              {error}
-            </p>
-          )}
-
-        <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
-          <div>
-            <p className="flex items-center gap-1.5 text-[13px] font-medium">
-              {phase === "locating" && (
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-              )}
-              Partager ma position
-            </p>
-            <p className="text-xs text-muted-foreground">{sharingDescription}</p>
-          </div>
-          <Switch
-            checked={isSharing}
-            aria-label="Partager ma position"
-            aria-busy={phase === "locating" || toggling}
-            onCheckedChange={(checked) => void handleToggleSharing(checked)}
-            disabled={toggling}
-          />
-        </div>
-
-        {friends.length === 0 ? (
-          <p className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
-            Vous n'avez pas encore d'ami accepté : ajoutez-en puis choisissez ceux qui
-            pourront vous voir.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-[13px] font-medium">Qui peut me voir ?</p>
-            <label className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-[13px] hover:bg-muted">
-              <Checkbox
-                checked={allChecked}
-                onCheckedChange={(checked) => toggleAllViewers(checked === true)}
-              />
-              Tous mes amis ({friends.length})
-            </label>
-            <div className="max-h-44 space-y-0.5 overflow-y-auto pr-1">
-              {friends.map((friend) => {
-                const selected = viewers.includes(friend.userId)
-                return (
-                  <label
-                    key={friend.userId}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-[13px] hover:bg-muted"
-                  >
-                    <Checkbox
-                      checked={selected}
-                      onCheckedChange={(checked) => toggleViewer(friend.userId, checked === true)}
-                    />
-                    <Avatar size="sm" className="size-5">
-                      {friend.imageUrl ? (
-                        <AvatarImage src={friend.imageUrl} alt={friend.name} />
-                      ) : (
-                        <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
-                      )}
-                    </Avatar>
-                    <span className="truncate">{friend.name}</span>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2 border-t border-border pt-2">
-          <p className="text-[13px] font-medium">Lien de partage</p>
-          {linkToken ? (
-            <>
-              <div className="flex gap-1.5">
-                <Input readOnly value={shareUrl} className="font-mono text-[11.5px]" />
-                <Button size="icon" variant="outline" onClick={handleCopy} aria-label="Copier le lien">
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Button size="sm" variant="outline" asChild>
-                  <a href={fbShareUrl} target="_blank" rel="noreferrer">
-                    <Share2 className="h-3.5 w-3.5" />
-                    Facebook
-                  </a>
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <a href={messengerShareUrl} target="_blank" rel="noreferrer">
-                    <Share2 className="h-3.5 w-3.5" />
-                    Messenger
-                  </a>
-                </Button>
-                <Button size="sm" variant="ghost" onClick={handleRevokeLink}>
-                  Révoquer
-                </Button>
-              </div>
-            </>
-          ) : (
-            <Button size="sm" variant="outline" onClick={handleCreateLink} disabled={loading}>
-              <Link2 className="h-3.5 w-3.5" />
-              Créer un lien
-            </Button>
-          )}
-          <p className="text-[11px] text-muted-foreground">
-            Le lien est protégé : seul un utilisateur connecté à Predicta peut voir la
-            position.
-          </p>
-        </div>
-      </PopoverContent>
+      <SharingTrigger compact={compact} isSharing={isSharing} open={open} />
+      <SharingPanelContent
+        error={error}
+        phase={phase}
+        isSharing={isSharing}
+        toggling={toggling}
+        onToggle={(checked) => void handleToggleSharing(checked)}
+        settings={settings}
+      />
     </Popover>
   )
 }
