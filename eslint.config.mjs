@@ -17,6 +17,34 @@ const eslintConfig = defineConfig([
         "error",
         { max: 60, skipBlankLines: true, skipComments: true },
       ],
+      // ------------------------------------------------------------------
+      // Règles de codage « Power of 10 » (NASA/JPL) adaptées au web.
+      // Règle 1 — Flux de contrôle simple : pas de goto ni de labels.
+      // Règle 2 — Boucles à borne fixe : interdit les boucles sans condition
+      //   prouvable (while(true), condition constante) et les boucles dont la
+      //   condition ne peut évoluer.
+      "no-labels": "error",
+      "no-constant-condition": ["error", { checkLoops: true }],
+      "no-unmodified-loop-condition": "error",
+      "no-unreachable-loop": "error",
+      // Règle 6 — Portée minimale des variables : const par défaut, ni var
+      // ni variable d'arrière-plan qui fuiterait hors de son bloc.
+      "block-scoped-var": "error",
+      "no-var": "error",
+      "prefer-const": ["error", { destructuring: "all" }],
+      // Règle 7 — Vérifier retours et paramètres : aucune valeur reçue
+      // (y compris les erreurs) ne doit rester inutilisée, et un `switch`
+      // ne doit jamais retomber sur le cas suivant par accident.
+      "no-fallthrough": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          args: "after-used",
+          caughtErrors: "all",
+          destructuredArrayIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
   {
