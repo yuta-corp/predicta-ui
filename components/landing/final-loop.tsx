@@ -9,11 +9,42 @@ import { initGsap, PREDICTA_EASE } from "@/lib/gsap-setup"
 
 initGsap()
 
+/** Titre : scale up dramatique + fade, au franchissement du seuil. */
+function animateFinalTitle(section: HTMLElement, title: HTMLHeadingElement): void {
+  gsap.fromTo(
+    title,
+    { opacity: 0, scale: 0.85, y: 30 },
+    {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      duration: 1.2,
+      ease: PREDICTA_EASE,
+      scrollTrigger: { trigger: section, start: "top 65%", once: true },
+    }
+  )
+}
+
+/** CTA : arrive avec un léger rebond. */
+function animateFinalCta(section: HTMLElement, cta: HTMLDivElement): void {
+  gsap.fromTo(
+    cta,
+    { opacity: 0, y: 20, scale: 0.9 },
+    {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.8,
+      ease: "back.out(1.4)",
+      delay: 0.3,
+      scrollTrigger: { trigger: section, start: "top 65%", once: true },
+    }
+  )
+}
+
 /**
- * FINAL CTA — Dramatique, pas une répétition du hero.
- *
- * Le titre apparaît avec un scale dramatique.
- * Le CTA pulse subtilement.
+ * FINAL CTA — Dramatique, pas une répétition du hero. Le titre apparaît avec un
+ * scale dramatique, le CTA pulse subtilement.
  */
 export function FinalLoop() {
   const sectionRef = useRef<HTMLElement>(null)
@@ -22,51 +53,16 @@ export function FinalLoop() {
 
   useEffect(() => {
     const section = sectionRef.current
-    if (!section) return
+    const title = titleRef.current
+    const cta = ctaRef.current
+    if (!section || !title || !cta) return
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-
     const ctx = gsap.context(() => {
       if (reduced) return
-
-      // Titre : scale up dramatique + fade
-      gsap.fromTo(
-        titleRef.current,
-        { opacity: 0, scale: 0.85, y: 30 },
-        {
-          opacity: 1,
-          scale: 1,
-          y: 0,
-          duration: 1.2,
-          ease: PREDICTA_EASE,
-          scrollTrigger: {
-            trigger: section,
-            start: "top 65%",
-            once: true,
-          },
-        }
-      )
-
-      // CTA : arrive avec un slight bounce
-      gsap.fromTo(
-        ctaRef.current,
-        { opacity: 0, y: 20, scale: 0.9 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.8,
-          ease: "back.out(1.4)",
-          delay: 0.3,
-          scrollTrigger: {
-            trigger: section,
-            start: "top 65%",
-            once: true,
-          },
-        }
-      )
+      animateFinalTitle(section, title)
+      animateFinalCta(section, cta)
     })
-
     return () => ctx.revert()
   }, [])
 

@@ -50,6 +50,19 @@ export function formatSeconds(ms: number): string {
   return `${s} s`
 }
 
+/**
+ * Précision d'un point GPS : « ± 12 m », « ± 250 m », « ± 2.4 km ».
+ * Une précision absente ou nulle est inconnue — jamais affichée comme exacte.
+ */
+export function formatAccuracy(accuracy: number | null | undefined): string {
+  if (typeof accuracy !== "number" || !Number.isFinite(accuracy) || accuracy <= 0) {
+    return "précision inconnue"
+  }
+  if (accuracy < 10) return `± ${Math.round(accuracy)} m`
+  if (accuracy < 1000) return `± ${Math.round(accuracy / 5) * 5} m`
+  return `± ${(accuracy / 1000).toFixed(1)} km`
+}
+
 export function formatCoordinates(lon: number, lat: number): string {
   const ns = lat >= 0 ? "N" : "S"
   const ew = lon >= 0 ? "E" : "O"

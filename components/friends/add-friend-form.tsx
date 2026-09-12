@@ -14,14 +14,13 @@ interface AddFriendFormProps {
   onSent: (addresseeId: string) => Promise<boolean>
 }
 
-export default function AddFriendForm({ onSent }: AddFriendFormProps) {
-  const [query, setQuery] = useState("")
+/**
+ * Recherche différée (debounce 300 ms) par pseudo ou nom, pour ne pas marteler
+ * l'API à chaque frappe.
+ */
+function useUserSearch(query: string) {
   const [results, setResults] = useState<UserSearchResult[]>([])
-  const [sendingTo, setSendingTo] = useState<string | null>(null)
 
-  // Recherche différée (debounce) par pseudo ou nom. Le fetch des actions
-  // serveur a lieu côté client : la liste ne s'affiche qu'après 300 ms sans
-  // frappe, pour ne pas marteler l'API.
   useEffect(() => {
     const q = query.trim()
     let cancelled = false
@@ -48,17 +47,62 @@ export default function AddFriendForm({ onSent }: AddFriendFormProps) {
     }
   }, [query])
 
+  return { results, setResults }
+}
+
+/** Une ligne de résultat : identité, pseudo, bouton d'ajout. */
+function SearchResultRow({
+  user,
+  pending,
+  onAdd,
+}: {
+  user: UserSearchResult
+  pending: boolean
+  onAdd: () => void
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 px-3 py-2">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Avatar size="sm">
+          {user.imageUrl ? (
+            <AvatarImage src={user.imageUrl} alt={user.name} />
+          ) : (
+            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+          )}
+        </Avatar>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{user.name}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {user.username ? `@${user.username}` : "Utilisateur Predicta"}
+          </p>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" onClick={onAdd} disabled={pending}>
+        <UserPlus className="h-3.5 w-3.5" />
+        {pending ? "Envoi…" : "Ajouter"}
+      </Button>
+    </li>
+  )
+}
+
+export default function AddFriendForm({ onSent }: AddFriendFormProps) {
+  const [query, setQuery] = useState("")
+  const { results, setResults } = useUserSearch(query)
+  const [sendingTo, setSendingTo] = useState<string | null>(null)
+
   const handleAdd = async (user: UserSearchResult) => {
     setSendingTo(user.id)
     try {
       const sent = await onSent(user.id)
-      if (sent) {
-        setResults((prev) => prev.filter((r) => r.id !== user.id))
-      }
+      if (sent) setResults((prev) => prev.filter((result) => result.id !== user.id))
     } finally {
       setSendingTo(null)
     }
   }
+
+  const trimmed = query.trim()
+  const tooShort = trimmed.length > 0 && trimmed.length < 2
+  const noResult = trimmed.length >= 2 && results.length === 0
 
   return (
     <div className="space-y-3">
@@ -73,7 +117,7 @@ export default function AddFriendForm({ onSent }: AddFriendFormProps) {
         />
       </div>
 
-      {query.trim().length > 0 && query.trim().length < 2 && (
+      {tooShort && (
         <p className="text-xs text-muted-foreground">
           Tapez au moins 2 caractères pour lancer la recherche.
         </p>
@@ -81,46 +125,20 @@ export default function AddFriendForm({ onSent }: AddFriendFormProps) {
 
       {results.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border">
-          {results.map((user) => {
-            const pending = sendingTo === user.id
-            return (
-              <li
-                key={user.id}
-                className="flex items-center justify-between gap-3 px-3 py-2"
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <Avatar size="sm">
-                    {user.imageUrl ? (
-                      <AvatarImage src={user.imageUrl} alt={user.name} />
-                    ) : (
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{user.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {user.username ? `@${user.username}` : "Utilisateur Predicta"}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleAdd(user)}
-                  disabled={pending}
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  {pending ? "Envoi…" : "Ajouter"}
-                </Button>
-              </li>
-            )
-          })}
+          {results.map((user) => (
+            <SearchResultRow
+              key={user.id}
+              user={user}
+              pending={sendingTo === user.id}
+              onAdd={() => void handleAdd(user)}
+            />
+          ))}
         </ul>
       )}
 
-      {query.trim().length >= 2 && results.length === 0 && (
+      {noResult && (
         <p className="text-sm text-muted-foreground">
-          Aucun utilisateur trouvé pour «&nbsp;{query.trim()}&nbsp;».
+          Aucun utilisateur trouvé pour «&nbsp;{trimmed}&nbsp;».
         </p>
       )}
     </div>

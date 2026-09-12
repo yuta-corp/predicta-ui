@@ -24,6 +24,10 @@ interface LocationsState {
  * En cas d'échec ponctuel, on conserve les dernières positions connues (on
  * ne vide pas la carte au premier retour réseau perdu), on ne signale que
  * l'erreur.
+ *
+ * Le rafraîchissement est immédiat quand l'onglet redevient visible : les
+ * navigateurs brident les intervalles en arrière-plan, une position fraîche ne
+ * doit pas attendre le tic suivant pour apparaître.
  */
 export function useFriendsLocations() {
   const { user } = useUser()
@@ -60,9 +64,15 @@ export function useFriendsLocations() {
     void fetchLocations()
     const interval = setInterval(fetchLocations, POLL_INTERVAL_MS)
 
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void fetchLocations()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+
     return () => {
       cancelled = true
       clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisibility)
     }
   }, [user?.id])
 

@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/helpers"
 import { prisma } from "@/lib/prisma"
 import { LOCATION_TTL_MS } from "@/lib/location-constants"
+import { sharingEntry } from "@/lib/notifications/events"
 import { pushPayloadFromEntry, sendPushToUser } from "@/lib/push/server"
 import type { FriendLocation, SharedLocation } from "@/lib/types/social"
 
@@ -72,6 +73,27 @@ export async function stopLocationSharing(): Promise<void> {
   const userId = await requireUserId()
 
   await prisma.locationShare.deleteMany({ where: { userId } })
+}
+
+/**
+ * Le partage de l'utilisateur courant est-il actif ?
+ *
+ * Source de vérité de l'état partagé : une position fraîche en base signifie
+ * que le partage tourne encore (quel que soit l'onglet ou l'appareil). C'est
+ * ce que consulte l'application au chargement pour restaurer l'état du bouton
+ * et reprendre la publication, au lieu de faire confiance à l'état local d'une
+ * page qui vient d'être rechargée.
+ */
+export async function getMyLocationSharing(): Promise<boolean> {
+  const userId = await requireUserId()
+
+  const share = await prisma.locationShare.findUnique({
+    where: { userId },
+    select: { updatedAt: true },
+  })
+  if (!share) return false
+
+  return Date.now() - share.updatedAt.getTime() <= LOCATION_TTL_MS
 }
 
 /**
@@ -249,11 +271,15 @@ async function notifySharingStarted(shareUserId: string) {
   })
   if (!sharer) return
 
-  const payload = pushPayloadFromEntry({
-    id: `sharing:${shareUserId}`,
-    kind: "sharing",
-    title: `${displayName(sharer)} a commencé à partager sa position.`,
-  })
+  // Même constructeur que le flux SSE : un seul libellé, une seule cible
+  // (« Voir » ouvre la carte centrée sur ce partageur).
+  const payload = pushPayloadFromEntry(
+    sharingEntry({
+      userId: shareUserId,
+      name: displayName(sharer),
+      startedAt: new Date(),
+    })
+  )
   await Promise.all(
     viewerRows.map((row) => sendPushToUser(row.viewerUserId, payload))
   )

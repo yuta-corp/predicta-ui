@@ -1,6 +1,7 @@
 "use server"
 
 import { ensureLocalUser, requireUserId, displayName, userProfileSelect } from "@/lib/actions/helpers"
+import { acceptedEntry, requestEntry } from "@/lib/notifications/events"
 import { prisma } from "@/lib/prisma"
 import { pushPayloadFromEntry, sendPushToUser } from "@/lib/push/server"
 import type {
@@ -145,14 +146,14 @@ export async function sendFriendRequest(addresseeId: string): Promise<void> {
     data: { requesterId: userId, addresseeId, status: "pending" },
   })
 
-  await notifyFriendRequestCreated(userId, addresseeId, friendship.id)
+  await notifyFriendRequestCreated(userId, addresseeId, friendship)
 }
 
 /** Push « demande d'ami reçue » à l'attention du destinataire. */
 async function notifyFriendRequestCreated(
   requesterId: string,
   addresseeId: string,
-  friendshipId: string
+  friendship: { id: string; createdAt: Date }
 ) {
   const requester = await prisma.user.findUnique({
     where: { id: requesterId },
@@ -160,14 +161,15 @@ async function notifyFriendRequestCreated(
   })
   if (!requester) return
 
-  await sendPushToUser(
-    addresseeId,
-    pushPayloadFromEntry({
-      id: `request:${friendshipId}`,
-      kind: "request",
-      title: `${displayName(requester)} vous a envoyé une demande d'ami.`,
-    })
-  )
+  // Même constructeur que le flux SSE : le push et le toast décrivent la même
+  // demande, avec le même identifiant et la même cible.
+  const entry = requestEntry({
+    requestId: friendship.id,
+    fromUserId: requesterId,
+    fromName: displayName(requester),
+    createdAt: friendship.createdAt,
+  })
+  await sendPushToUser(addresseeId, pushPayloadFromEntry(entry))
 }
 
 /** Accepte une demande reçue (addressee = utilisateur courant). */
@@ -186,30 +188,32 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
     throw new Error("Cette demande n'est plus en attente.")
   }
 
-  await prisma.friendship.update({
+  const accepted = await prisma.friendship.update({
     where: { id: requestId },
     data: { status: "accepted" },
   })
 
-  await notifyRequestAccepted(userId, friendship.requesterId, friendship.id)
+  await notifyRequestAccepted(userId, friendship.requesterId, accepted.updatedAt)
 }
 
 /** Push « demande acceptée » à l'attention du demandeur. */
-async function notifyRequestAccepted(addresseeId: string, requesterId: string, friendshipId: string) {
+async function notifyRequestAccepted(
+  addresseeId: string,
+  requesterId: string,
+  acceptedAt: Date
+) {
   const addressee = await prisma.user.findUnique({
     where: { id: addresseeId },
     select: userProfileSelect,
   })
   if (!addressee) return
 
-  await sendPushToUser(
-    requesterId,
-    pushPayloadFromEntry({
-      id: `accepted:${friendshipId}`,
-      kind: "accepted",
-      title: `${displayName(addressee)} a accepté votre demande.`,
-    })
-  )
+  const entry = acceptedEntry({
+    friendId: addresseeId,
+    friendName: displayName(addressee),
+    acceptedAt,
+  })
+  await sendPushToUser(requesterId, pushPayloadFromEntry(entry))
 }
 
 /** Refuse une demande reçue (statut passé à declined, ré-émission possible). */

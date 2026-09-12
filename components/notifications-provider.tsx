@@ -1,31 +1,17 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import { createContext, useContext, useEffect, useMemo } from "react"
 import { useUser } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 
-import {
-  type NotificationEntry,
-  type NotificationSnapshot,
-  type NotificationTick,
-} from "@/lib/notifications/events"
+import { useNotificationStream } from "@/hooks/use-notification-stream"
+import type { NotificationEntry } from "@/lib/notifications/events"
+import { useNotificationsStore } from "@/lib/store/notifications"
+import { getPersistApi } from "@/lib/store/persist"
 import type { FriendRequest } from "@/lib/types/social"
-import { registerServiceWorker } from "@/lib/push/client"
 
 export type { NotificationEntry, NotificationEntryKind } from "@/lib/notifications/events"
 
-const MAX_RECENT = 10
-
-interface NotificationsState {
-  userId: string
-  requests: FriendRequest[]
-  recent: NotificationEntry[]
-}
-
 interface NotificationsContextValue {
-  requests: FriendRequest[]
-  recent: NotificationEntry[]
   /** Rebranche immédiatement le flux (après accept/refus, ex.). */
   refresh: () => void
 }
@@ -33,145 +19,68 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(null)
 
 /**
- * Cloche de notifications — push serveur via Server-Sent Events.
- *
- * Une seule `EventSource` ouverte sur /api/notifications : le serveur sample
- * la base et pousse les nouveaux événements. Chaque message porte un `id:`
- * (curseur ms) ; à la reconnexion le navigateur renvoie `Last-Event-ID`, on
- * donne explicitement le curseur à l'ouverture manuelle (onglet caché →
- * visible, refresh) — rien n'est perdu ni dupliqué.
- *
- * L'état est keyé par identifiant utilisateur : si la session change, les
- * anciennes notifications ne sont jamais exposées.
+ * Notifications push serveur (SSE) : le transport vit dans
+ * `useNotificationStream`, l'état dans `useNotificationsStore`. Ici, on
+ * branche l'utilisateur courant et on restaure l'historique persisté.
  */
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded, user } = useUser()
-  const router = useRouter()
-
-  const [state, setState] = useState<NotificationsState>({
-    userId: "",
-    requests: [],
-    recent: [],
-  })
-  const esRef = useRef<EventSource | null>(null)
-  const cursorRef = useRef<number>(0)
-  const userIdRef = useRef<string | null>(null)
-
-  const attachStream = useCallback(
-    (es: EventSource, userId: string) => {
-      es.onmessage = (event) => {
-        // On n'avance le curseur qu'après un traitement réussi : un message
-        // illisible ne fait pas perdre définitivement ses événements.
-        let data: NotificationSnapshot | NotificationTick
-        try {
-          data = JSON.parse(event.data) as NotificationSnapshot | NotificationTick
-        } catch (err) {
-          console.error("[notifications] message SSE illisible :", err)
-          return
-        }
-        if (event.lastEventId) cursorRef.current = Number(event.lastEventId)
-
-        if (data.type === "snapshot") {
-          setState((prev) => ({
-            userId,
-            requests: data.requests,
-            recent: prev.userId === userId ? prev.recent : [],
-          }))
-          return
-        }
-
-        setState((prev) => ({
-          userId,
-          requests: data.requests,
-          recent: [...data.events, ...(prev.userId === userId ? prev.recent : [])].slice(
-            0,
-            MAX_RECENT
-          ),
-        }))
-
-        // Événement arrivé pendant que l'onglet était visible : toast.
-        for (const entry of data.events) {
-          toast(entry.title, {
-            action: {
-              label: "Voir",
-              onClick: () => router.push("/friends"),
-            },
-          })
-        }
-      }
-      // Sur erreur, EventSource se reconnecte seul avec Last-Event-ID.
-    },
-    [router]
-  )
-
-  const openStream = useCallback(
-    (userId: string) => {
-      esRef.current?.close()
-      const url = new URL("/api/notifications", window.location.origin)
-      if (cursorRef.current > 0) url.searchParams.set("cursor", String(cursorRef.current))
-      const es = new EventSource(url)
-      esRef.current = es
-      attachStream(es, userId)
-    },
-    [attachStream]
-  )
+  const userId = user?.id ?? null
+  const { connect, refresh } = useNotificationStream()
 
   useEffect(() => {
-    const userId = user?.id ?? null
     if (!isLoaded) return
-    userIdRef.current = userId
-    cursorRef.current = 0
 
-    esRef.current?.close()
-    esRef.current = null
-    if (userId) {
-      openStream(userId)
-      // Enregistre le service worker (idempotent) : requis pour que le
-      // toggle push s'abonne instantanément et pour les notificationclick.
-      void registerServiceWorker().catch(() => {})
-    }
+    const persistApi = getPersistApi(useNotificationsStore)
+    // Sans persistance (stockage indisponible), il n'y a rien à restaurer : on
+    // branche directement.
+    if (!persistApi || persistApi.hasHydrated()) return connect(userId)
 
-    // Pause quand l'onglet est masqué (zéro trafic réseau), reprise au curseur.
-    const onVisible = () => {
-      if (document.visibilityState !== "visible") return
-      const current = userIdRef.current
-      if (current) openStream(current)
-    }
-    document.addEventListener("visibilitychange", onVisible)
+    // L'historique local n'est lu qu'après montage — le premier rendu client est
+    // identique au HTML serveur — et la connexion ne démarre qu'une fois la
+    // lecture terminée : l'état par défaut n'écrase jamais ce qui est persisté.
+    let disconnect: (() => void) | null = null
+    let cancelled = false
+    const unsubscribe = persistApi.onFinishHydration(() => {
+      if (cancelled) return
+      disconnect = connect(userId)
+    })
+    void persistApi.rehydrate()
 
     return () => {
-      document.removeEventListener("visibilitychange", onVisible)
-      esRef.current?.close()
-      esRef.current = null
+      cancelled = true
+      unsubscribe()
+      disconnect?.()
     }
-  }, [isLoaded, user?.id, openStream])
+  }, [isLoaded, userId, connect])
 
-  const refresh = useCallback(() => {
-    const userId = userIdRef.current
-    if (userId) openStream(userId)
-  }, [openStream])
-
-  const current = state.userId === user?.id ? state : null
+  const contextValue = useMemo(() => ({ refresh }), [refresh])
 
   return (
-    <NotificationsContext.Provider
-      value={{
-        requests: current?.requests ?? [],
-        recent: current?.recent ?? [],
-        refresh,
-      }}
-    >
+    <NotificationsContext.Provider value={contextValue}>
       {children}
     </NotificationsContext.Provider>
   )
 }
 
-export function useNotifications(): NotificationsContextValue {
+/**
+ * Notifications de l'utilisateur courant : les données viennent du store
+ * partagé, `refresh` du flux SSE (qui, lui, exige le provider).
+ */
+export function useNotifications(): {
+  requests: FriendRequest[]
+  recent: NotificationEntry[]
+  refresh: () => void
+} {
+  const requests = useNotificationsStore((state) => state.requests)
+  const recent = useNotificationsStore((state) => state.recent)
   const context = useContext(NotificationsContext)
+
   if (!context) {
     throw new Error(
       "useNotifications doit être utilisé à l'intérieur de <NotificationsProvider>."
     )
   }
-  return context
+
+  return { requests, recent, refresh: context.refresh }
 }

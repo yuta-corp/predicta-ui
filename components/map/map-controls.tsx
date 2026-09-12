@@ -3,11 +3,8 @@
 import { useEffect, useReducer } from "react"
 import { LocateFixedIcon, MapPinned } from "lucide-react"
 import { toast } from "sonner"
-import { getLiveMap, subscribeLiveMap } from "@/components/map/city-map"
-import {
-  DEFAULT_ERROR,
-  ERROR_MESSAGES,
-} from "@/components/map/geolocation-control"
+import { getLiveMap, subscribeLiveMap } from "@/lib/map/map-registry"
+import { messageFromGeoError } from "@/lib/map/geolocation-messages"
 import { updateUserLocationSource } from "@/lib/map/user-location"
 import { TANA_CENTER } from "@/lib/geo"
 
@@ -62,9 +59,7 @@ export function MapControls() {
       },
       (err) => {
         toast.dismiss(loadingToastId)
-        toast.error(ERROR_MESSAGES[err.code] ?? DEFAULT_ERROR, {
-          duration: 6000,
-        })
+        toast.error(messageFromGeoError(err), { duration: 6000 })
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }
     )

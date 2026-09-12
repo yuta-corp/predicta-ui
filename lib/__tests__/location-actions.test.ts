@@ -61,6 +61,7 @@ import {
   createLocationLink,
   getFriendsLocations,
   getMyLocationLink,
+  getMyLocationSharing,
   getSharedLocation,
   getShareViewers,
   revokeLocationLink,
@@ -201,6 +202,34 @@ describe("stopLocationSharing", () => {
     expect(locationShareMock.deleteMany).toHaveBeenCalledWith({
       where: { userId: "user_me" },
     })
+  })
+})
+
+describe("getMyLocationSharing", () => {
+  it("renvoie true quand la position publiée est fraîche", async () => {
+    locationShareMock.findUnique.mockResolvedValue({ updatedAt: new Date() })
+
+    await expect(getMyLocationSharing()).resolves.toBe(true)
+  })
+
+  it("renvoie false quand la position est périmée (TTL dépassé)", async () => {
+    locationShareMock.findUnique.mockResolvedValue({
+      updatedAt: new Date(Date.now() - 6 * 60_000),
+    })
+
+    await expect(getMyLocationSharing()).resolves.toBe(false)
+  })
+
+  it("renvoie false sans position publiée", async () => {
+    locationShareMock.findUnique.mockResolvedValue(null)
+
+    await expect(getMyLocationSharing()).resolves.toBe(false)
+  })
+
+  it("exige une session", async () => {
+    authMock.mockResolvedValue({ userId: null })
+
+    await expect(getMyLocationSharing()).rejects.toThrow("connecté")
   })
 })
 

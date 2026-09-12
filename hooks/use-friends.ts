@@ -13,7 +13,8 @@ import {
 } from "@/lib/actions/friends"
 import type { Friend, FriendRequest } from "@/lib/types/social"
 
-export function useFriends() {
+/** Charge amis + demandes, keyés par utilisateur. */
+function useFriendsData() {
   const { user } = useUser()
   const [friends, setFriends] = useState<Friend[]>([])
   const [requests, setRequests] = useState<FriendRequest[]>([])
@@ -33,18 +34,18 @@ export function useFriends() {
     if (!userId) return
 
     let cancelled = false
-
     const load = async () => {
       try {
         const data = await fetchData()
-        if (!cancelled) {
-          setFriends(data.friends)
-          setRequests(data.requests)
-          setError(null)
-        }
+        if (cancelled) return
+        setFriends(data.friends)
+        setRequests(data.requests)
+        setError(null)
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Impossible de charger vos amis.")
+          setError(
+            err instanceof Error ? err.message : "Impossible de charger vos amis."
+          )
         }
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -57,12 +58,20 @@ export function useFriends() {
     }
   }, [user?.id, fetchData])
 
+  return { friends, requests, isLoading, error, setFriends, setRequests, fetchData }
+}
+
+/** Amis, demandes, et actions qui rechargent l'état après coup. */
+export function useFriends() {
+  const { friends, requests, isLoading, error, setFriends, setRequests, fetchData } =
+    useFriendsData()
+
   const sendRequest = useCallback(
     async (addresseeId: string) => {
       await sendFriendRequest(addresseeId)
       setFriends((await fetchData()).friends)
     },
-    [fetchData]
+    [fetchData, setFriends]
   )
 
   const acceptRequest = useCallback(
@@ -72,16 +81,15 @@ export function useFriends() {
       setFriends(data.friends)
       setRequests(data.requests)
     },
-    [fetchData]
+    [fetchData, setFriends, setRequests]
   )
 
   const rejectRequest = useCallback(
     async (requestId: string) => {
       await rejectFriendRequest(requestId)
-      const data = await fetchData()
-      setRequests(data.requests)
+      setRequests((await fetchData()).requests)
     },
-    [fetchData]
+    [fetchData, setRequests]
   )
 
   const removeFriendFn = useCallback(
@@ -89,7 +97,7 @@ export function useFriends() {
       await removeFriend(friendshipId)
       setFriends((await fetchData()).friends)
     },
-    [fetchData]
+    [fetchData, setFriends]
   )
 
   return {

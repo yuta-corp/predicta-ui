@@ -197,19 +197,7 @@ class TrafficEngine {
     const label = quartier ? quartier.name : `Point ${lon.toFixed(3)}, ${lat.toFixed(3)}`
     this.setState({ scan: { id: ++this.scanId, lon, lat, label } })
 
-    if (this.zoneCache) {
-      const [w, s, e, n] = this.zoneCache.extent
-      const withinExtent = lon >= w && lon <= e && lat >= s && lat <= n
-      const fresh = Date.now() - this.zoneCache.fetchedAt < ZONE_COOLDOWN_MS
-      if (withinExtent && fresh) {
-        this.setState({
-          activeQuartier: quartier,
-          error: null,
-          focus: { id: ++this.focusId, type: "point", lon, lat, zoom: 13.5 },
-        })
-        return
-      }
-    }
+    if (this.focusFromZoneCache(lon, lat, quartier)) return
 
     const key = tagKey({ kind: "zone", cell })
     if (this.inFlight.has(key)) return
@@ -217,41 +205,7 @@ class TrafficEngine {
     this.setState({ busy: true, error: null })
     const startedAt = performance.now()
     try {
-      const { data, meta } = await fetchZoneTraffic({
-        name: quartier ? quartier.name : label,
-        lon,
-        lat,
-      })
-      const update = this.store.upsert({
-        key,
-        tag: { kind: "zone", cell },
-        label: quartier ? `Zone ${quartier.name}` : "Zone",
-        features: data.features,
-        meta,
-        fetchedAt: meta.fetchedAt,
-      })
-      this.zoneCache = {
-        fetchedAt: meta.fetchedAt,
-        meta,
-        extent: extentOf(data.features),
-        sourceKey: key,
-      }
-      this.setState({
-        busy: false,
-        activeQuartier: quartier,
-        freshness: freshnessFromMeta(meta, quartier ? quartier.name : "Zone"),
-        counts: { routes: update.total, sources: this.store.listSources().length },
-        focus: { id: ++this.focusId, type: "point", lon, lat, zoom: 13.5 },
-        lastRequest: {
-          method: "PUT",
-          path: "/traffic/zone",
-          status: 200,
-          durationMs: Math.round(performance.now() - startedAt),
-          features: data.features.length,
-          meta,
-          error: false,
-        },
-      })
+      await this.loadZone({ key, cell, lon, lat, quartier, label, startedAt })
     } catch (error) {
       this.setState({
         busy: false,
@@ -260,6 +214,73 @@ class TrafficEngine {
     } finally {
       this.inFlight.delete(key)
     }
+  }
+
+  /**
+   * Réutilise la zone déjà en cache si le point est dans son étendue et qu'elle
+   * est fraîche. Renvoie true quand la caméra a été recentrée sans requête.
+   */
+  private focusFromZoneCache(
+    lon: number,
+    lat: number,
+    quartier: ReturnType<typeof nearestQuartier>
+  ): boolean {
+    if (!this.zoneCache) return false
+    const [w, s, e, n] = this.zoneCache.extent
+    const withinExtent = lon >= w && lon <= e && lat >= s && lat <= n
+    const fresh = Date.now() - this.zoneCache.fetchedAt < ZONE_COOLDOWN_MS
+    if (!withinExtent || !fresh) return false
+    this.setState({
+      activeQuartier: quartier,
+      error: null,
+      focus: { id: ++this.focusId, type: "point", lon, lat, zoom: 13.5 },
+    })
+    return true
+  }
+
+  /** Charge la zone autour du point, met le store à jour et recentre la carte. */
+  private async loadZone(params: {
+    key: string
+    cell: ReturnType<typeof gridCellKey>
+    lon: number
+    lat: number
+    quartier: ReturnType<typeof nearestQuartier>
+    label: string
+    startedAt: number
+  }): Promise<void> {
+    const { key, cell, lon, lat, quartier, label, startedAt } = params
+    const zoneName = quartier ? quartier.name : label
+    const { data, meta } = await fetchZoneTraffic({ name: zoneName, lon, lat })
+    const update = this.store.upsert({
+      key,
+      tag: { kind: "zone", cell },
+      label: quartier ? `Zone ${quartier.name}` : "Zone",
+      features: data.features,
+      meta,
+      fetchedAt: meta.fetchedAt,
+    })
+    this.zoneCache = {
+      fetchedAt: meta.fetchedAt,
+      meta,
+      extent: extentOf(data.features),
+      sourceKey: key,
+    }
+    this.setState({
+      busy: false,
+      activeQuartier: quartier,
+      freshness: freshnessFromMeta(meta, quartier ? quartier.name : "Zone"),
+      counts: { routes: update.total, sources: this.store.listSources().length },
+      focus: { id: ++this.focusId, type: "point", lon, lat, zoom: 13.5 },
+      lastRequest: {
+        method: "PUT",
+        path: "/traffic/zone",
+        status: 200,
+        durationMs: Math.round(performance.now() - startedAt),
+        features: data.features.length,
+        meta,
+        error: false,
+      },
+    })
   }
 
   /**

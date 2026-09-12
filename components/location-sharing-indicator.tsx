@@ -7,11 +7,25 @@ interface LocationSharingIndicatorProps {
   compact?: boolean
 }
 
+/** Pastille d'état du partage : vert = publié, ambre = en cours d'acquisition. */
 export default function LocationSharingIndicator({
   compact = false,
 }: LocationSharingIndicatorProps) {
-  const { isSharing, error } = useLocationSharing()
-  const label = isSharing ? "Position partagée" : "Position privée"
+  const { phase, error } = useLocationSharing()
+
+  const label =
+    phase === "sharing"
+      ? "Position partagée"
+      : phase === "locating"
+        ? "Recherche de votre position…"
+        : "Position privée"
+
+  const dotClass =
+    phase === "sharing"
+      ? "animate-pulse bg-green-500"
+      : phase === "locating"
+        ? "animate-pulse bg-amber-400"
+        : "bg-gray-300"
 
   if (compact) {
     return (
@@ -20,12 +34,7 @@ export default function LocationSharingIndicator({
         title={error ?? label}
         aria-label={label}
       >
-        <span
-          className={cn(
-            "h-2 w-2 rounded-full",
-            isSharing ? "animate-pulse bg-green-500" : "bg-gray-300"
-          )}
-        />
+        <span className={cn("h-2 w-2 rounded-full", dotClass)} />
       </span>
     )
   }
@@ -35,12 +44,7 @@ export default function LocationSharingIndicator({
       className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
       title={error ?? undefined}
     >
-      <span
-        className={cn(
-          "h-2 w-2 rounded-full",
-          isSharing ? "animate-pulse bg-green-500" : "bg-gray-300"
-        )}
-      />
+      <span className={cn("h-2 w-2 rounded-full", dotClass)} />
       {label}
     </span>
   )
