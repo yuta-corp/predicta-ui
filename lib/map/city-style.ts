@@ -278,6 +278,48 @@ function userLocationLayers(isDark: boolean): LayerSpecification[] {
 }
 
 /**
+ * Volumes 3D des bâtiments — rendu « LOD2 visuel » appliqué aux deux thèmes :
+ * coins arrondis, dégradé vertical des façades, et toits teintés par bandes
+ * d'élévation pour hiérarchiser les îlots. La hauteur est légèrement exagérée
+ * pour rester lisible au zoom urbain. `render_height`/`render_min_height` sont
+ * calculés par OpenMapTiles depuis les tags OSM (building:levels/height).
+ */
+function building3dLayer(isDark: boolean): LayerSpecification[] {
+  const facade = isDark
+    ? ["#151a11", "#1d2317", "#28311f", "#35402a"]
+    : ["#d9dbcd", "#e0e2d3", "#e9eadc", "#f1f2e6"]
+  return [
+    {
+      id: "building-3d",
+      type: "fill-extrusion",
+      source: "openmaptiles",
+      "source-layer": "building",
+      minzoom: 14,
+      layout: { "fill-extrusion-rounded-corner-distance": 8 },
+      paint: {
+        "fill-extrusion-color": [
+          "interpolate",
+          ["linear"],
+          ["get", "render_height"],
+          0,
+          facade[0],
+          10,
+          facade[1],
+          25,
+          facade[2],
+          60,
+          facade[3],
+        ],
+        "fill-extrusion-height": ["*", ["get", "render_height"], 1.2],
+        "fill-extrusion-base": ["*", ["get", "render_min_height"], 1.2],
+        "fill-extrusion-opacity": isDark ? 0.9 : 0.92,
+        "fill-extrusion-vertical-gradient": true,
+      },
+    },
+  ]
+}
+
+/**
  * Couches POI du style liberty (arrêts de bus, commerces…) injectées dans le
  * style dark, qui n'en fournit pas. Recolorées pour le fond sombre (sprite
  * partagé liberty/dark, donc les icônes existent).
@@ -335,9 +377,12 @@ async function buildPredictaStyle(isDark: boolean): Promise<StyleSpecification> 
   const base = await fetchStyle(isDark ? BASEMAP_STYLE.dark : BASEMAP_STYLE.light)
   const injected = predictaLayers(isDark)
   if (isDark) injected.push(...(await darkPoiLayers()))
+  // Bâtiments 3D : on remplace la couche du basemap (liberty en fournit une)
+  // par notre rendu « LOD2 visuel », commun aux deux thèmes.
+  const layers = [...base.layers].filter((layer) => layer.id !== "building-3d")
+  if (base.sources.openmaptiles) injected.push(...building3dLayer(isDark))
   // Les couches Predicta passent SOUS les symboles du basemap (noms de rues,
   // POI, arrêts de bus restent lisibles au-dessus du trafic).
-  const layers = [...base.layers]
   const firstSymbol = layers.findIndex((layer) => layer.type === "symbol")
   const at = firstSymbol === -1 ? layers.length : firstSymbol
   layers.splice(at, 0, ...injected)
