@@ -10,19 +10,16 @@ import FriendsList from "@/components/friends/friends-list"
 import { PseudoForm } from "@/components/friends/pseudo-form"
 import { useFriends } from "@/hooks/use-friends"
 
-export function FriendsManager() {
-  const { isLoaded } = useUser()
-  const {
-    friends,
-    requests,
-    isLoading,
-    error,
-    sendRequest,
-    acceptRequest,
-    rejectRequest,
-    removeFriend,
-  } = useFriends()
+type IdAction = (id: string) => Promise<void>
+type SendAction = (id: string) => Promise<unknown>
 
+/** Enveloppe les actions d'amis avec leurs toasts de succès / erreur. */
+function useFriendActions(
+  sendRequest: SendAction,
+  acceptRequest: IdAction,
+  rejectRequest: IdAction,
+  removeFriend: IdAction
+) {
   const handleSend = useCallback(
     async (addresseeId: string): Promise<boolean> => {
       try {
@@ -73,6 +70,29 @@ export function FriendsManager() {
     [removeFriend]
   )
 
+  return { handleSend, handleAccept, handleReject, handleRemove }
+}
+
+export function FriendsManager() {
+  const { isLoaded } = useUser()
+  const {
+    friends,
+    requests,
+    isLoading,
+    error,
+    sendRequest,
+    acceptRequest,
+    rejectRequest,
+    removeFriend,
+  } = useFriends()
+
+  const { handleSend, handleAccept, handleReject, handleRemove } = useFriendActions(
+    sendRequest,
+    acceptRequest,
+    rejectRequest,
+    removeFriend
+  )
+
   if (!isLoaded || isLoading) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Chargement…</p>
   }
@@ -80,7 +100,10 @@ export function FriendsManager() {
   return (
     <div className="space-y-8">
       {error && (
-        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -100,7 +123,7 @@ export function FriendsManager() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Ajouter un ami</h2>
         <p className="text-sm text-muted-foreground">
-          Cherchez par pseudo (ou nom) puis envoyez une demande d'ami.
+          Cherchez par pseudo (ou nom) puis envoyez une demande d&apos;ami.
         </p>
         <AddFriendForm onSent={handleSend} />
       </section>
