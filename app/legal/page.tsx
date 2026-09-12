@@ -1,4 +1,5 @@
 import Link from "next/link"
+
 import { DocumentLayout } from "@/components/shell/document-layout"
 
 const SECTIONS = [
@@ -46,79 +47,53 @@ const ENTITY = [
   ],
 ] as const
 
-export default function LegalPage() {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <DocumentLayout
-      eyebrow="Mentions légales"
-      title="Mentions légales"
-      intro="Les informations légales du service Predicta, conformément à la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN)."
-    >
-      <dl className="mb-12 divide-y divide-border">
-        {ENTITY.map(([label, value]) => (
-          <div
-            key={label}
-            className="grid gap-1 py-3 sm:grid-cols-[13rem_1fr] sm:gap-6"
-          >
-            <dt className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {label}
-            </dt>
-            <dd className="text-[13.5px] leading-relaxed text-foreground/85">
-              {value}
-            </dd>
-          </div>
-        ))}
-      </dl>
+    <section className="mb-8">
+      <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
+      <div className="mt-2.5 max-w-2xl text-[13.5px] leading-relaxed text-foreground/80">
+        {children}
+      </div>
+    </section>
+  )
+}
 
-      <Section title="1. Objet du service">
-        <p>
-          Predicta est un service d'information sur le trafic d'Antananarivo :
-          une carte vivante alimentée par l'API Predicta, et une API destinée
-          aux développeurs. L'accès à la carte est libre et gratuit.
-        </p>
-      </Section>
-      <Section title="2. Données cartographiques">
-        <p>
-          Le fond de carte provient d'OpenStreetMap et d'OpenFreeMap. Les
-          données de trafic sont issues de sources publiques agrégées et sont
-          fournies en mode best-effort : elles peuvent être partielles,
-          retardées ou indisponibles, et ne constituent jamais une garantie
-          sur les conditions de circulation.
-        </p>
-      </Section>
-      <Section title="3. Propriété intellectuelle">
-        <p>
-          L'interface, l'identité visuelle, le logotype et la marque Predicta
-          appartiennent à l'éditeur du service. Toute reproduction ou
-          réutilisation sans autorisation préalable est interdite, hors usage
-          privé. Les données OpenStreetMap sont publiées sous licence ODbL
-          (© OpenStreetMap contributors).
-        </p>
-      </Section>
-      <Section title="4. Responsabilité">
-        <p>
-          Le service est fourni « en l'état ». L'éditeur ne saurait être
-          tenu responsable des interruptions, erreurs, ou conséquences d'un
-          usage des informations fournies. Les conditions détaillées
-          figurent dans les conditions d'utilisation.
-        </p>
-      </Section>
+/** Tableau des informations d'éditeur et d'hébergeur. */
+function LegalEntityTable() {
+  return (
+    <dl className="mb-12 divide-y divide-border">
+      {ENTITY.map(([label, value]) => (
+        <div key={label} className="grid gap-1 py-3 sm:grid-cols-[13rem_1fr] sm:gap-6">
+          <dt className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {label}
+          </dt>
+          <dd className="text-[13.5px] leading-relaxed text-foreground/85">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
 
+/** Renvois vers les autres documents juridiques. */
+function OtherDocuments() {
+  return (
+    <>
       <h2 className="mt-14 text-[15px] font-semibold tracking-tight">
         Autres documents juridiques
       </h2>
       <ul className="mt-2 divide-y divide-border">
-        {SECTIONS.map((s) => (
-          <li key={s.href}>
+        {SECTIONS.map((section) => (
+          <li key={section.href}>
             <Link
-              href={s.href}
+              href={section.href}
               className="group flex items-baseline justify-between gap-6 py-4 transition-colors"
             >
               <span>
                 <span className="text-[14.5px] font-medium group-hover:text-primary">
-                  {s.title}
+                  {section.title}
                 </span>
                 <span className="mt-0.5 block max-w-lg text-[13px] text-muted-foreground">
-                  {s.text}
+                  {section.text}
                 </span>
               </span>
               <span aria-hidden className="text-muted-foreground group-hover:text-primary">
@@ -128,17 +103,55 @@ export default function LegalPage() {
           </li>
         ))}
       </ul>
-    </DocumentLayout>
+    </>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+export default function LegalPage() {
   return (
-    <section className="mb-8">
-      <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
-      <div className="mt-2.5 max-w-2xl text-[13.5px] leading-relaxed text-foreground/80">
-        {children}
-      </div>
-    </section>
+    <DocumentLayout
+      eyebrow="Mentions légales"
+      title="Mentions légales"
+      intro="Les informations légales du service Predicta, conformément à la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN)."
+    >
+      <LegalEntityTable />
+
+      <Section title="1. Objet du service">
+        <p>
+          Predicta est un service d&apos;information sur le trafic
+          d&apos;Antananarivo : une carte vivante alimentée par l&apos;API
+          Predicta, et une API destinée aux développeurs. L&apos;accès à la carte
+          est libre et gratuit.
+        </p>
+      </Section>
+      <Section title="2. Données cartographiques">
+        <p>
+          Le fond de carte provient d&apos;OpenStreetMap et d&apos;OpenFreeMap.
+          Les données de trafic sont issues de sources publiques agrégées et sont
+          fournies en mode best-effort : elles peuvent être partielles, retardées
+          ou indisponibles, et ne constituent jamais une garantie sur les
+          conditions de circulation.
+        </p>
+      </Section>
+      <Section title="3. Propriété intellectuelle">
+        <p>
+          L&apos;interface, l&apos;identité visuelle, le logotype et la marque
+          Predicta appartiennent à l&apos;éditeur du service. Toute reproduction
+          ou réutilisation sans autorisation préalable est interdite, hors usage
+          privé. Les données OpenStreetMap sont publiées sous licence ODbL (©
+          OpenStreetMap contributors).
+        </p>
+      </Section>
+      <Section title="4. Responsabilité">
+        <p>
+          Le service est fourni « en l&apos;état ». L&apos;éditeur ne saurait
+          être tenu responsable des interruptions, erreurs, ou conséquences
+          d&apos;un usage des informations fournies. Les conditions détaillées
+          figurent dans les conditions d&apos;utilisation.
+        </p>
+      </Section>
+
+      <OtherDocuments />
+    </DocumentLayout>
   )
 }
