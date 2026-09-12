@@ -1,12 +1,14 @@
 "use client"
 
-import { useEffect, useReducer } from "react"
-import { LocateFixedIcon, MapPinned } from "lucide-react"
+import { useEffect, useReducer, useState } from "react"
+import type { Map as MapLibreMap } from "maplibre-gl"
+import { Boxes, LocateFixedIcon, MapPinned } from "lucide-react"
 import { toast } from "sonner"
 import { getLiveMap, subscribeLiveMap } from "@/lib/map/map-registry"
 import { messageFromGeoError } from "@/lib/map/geolocation-messages"
 import { updateUserLocationSource } from "@/lib/map/user-location"
 import { TANA_CENTER } from "@/lib/geo"
+import { cn } from "@/lib/utils"
 
 function reducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -18,10 +20,46 @@ function zoomForAccuracy(accuracy: number): number {
 }
 
 /**
- * Contrôles carte : retour au centre de la ville et « ma position ». Le suivi
- * automatique existe par ailleurs (GeolocationControl) ; ce bouton recentre
- * explicitement la caméra sur l'utilisateur — où qu'il soit, même hors de
- * Tana. Le zoom +/− est assuré par le NavigationControl natif de MapLibre.
+ * Bascule l'inclinaison de la caméra (vue plongeante à 55°) / retour à plat.
+ * En pente, la couche `building-3d` (fill-extrusion) prend du relief et les
+ * bâtiments de Tana ressortent.
+ */
+function BuildingsToggle({ map }: { map: MapLibreMap }) {
+  const [isTilted, setIsTilted] = useState(false)
+  const toggle = () => {
+    const next = !isTilted
+    setIsTilted(next)
+    if (reducedMotion()) {
+      map.jumpTo({ pitch: next ? 55 : 0 })
+    } else {
+      map.easeTo({ pitch: next ? 55 : 0, duration: 1200 })
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={isTilted}
+      aria-label={isTilted ? "Revenir à plat" : "Incliner la carte"}
+      title={isTilted ? "Revenir à plat" : "Incliner la carte"}
+      className={cn(
+        "flex h-9 w-9 items-center justify-center rounded-md border backdrop-blur-sm transition-colors",
+        isTilted
+          ? "border-primary/50 bg-primary/15 text-primary"
+          : "border-border/80 bg-background/70 text-muted-foreground hover:bg-background hover:text-foreground"
+      )}
+    >
+      <Boxes className="h-4 w-4" aria-hidden />
+    </button>
+  )
+}
+
+/**
+ * Contrôles carte : inclinaison 3D, retour au centre de la ville et « ma
+ * position ». Le suivi automatique existe par ailleurs (GeolocationControl) ;
+ * ce bouton recentre explicitement la caméra sur l'utilisateur — où qu'il
+ * soit, même hors de Tana. Le zoom +/− est assuré par le NavigationControl
+ * natif de MapLibre.
  */
 export function MapControls() {
   // Se rend quand l'instance maplibre arrive (ou part) : on l'interroge à ce
@@ -67,6 +105,7 @@ export function MapControls() {
 
   return (
     <div className="flex flex-col gap-1.5">
+      <BuildingsToggle map={map} />
       <button
         type="button"
         onClick={showMyLocation}
