@@ -81,7 +81,7 @@ export function MapShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Barre basse : fraîcheur, coordonnées, attribution, contrôles */}
-        <footer className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 px-4 pb-3 sm:px-6 sm:pb-4">
+        <footer className="pointer-events-auto absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 px-4 pb-3 sm:px-6 sm:pb-4">
           <div className="flex flex-col gap-1.5">
             <Freshness />
             <p className="hidden text-[10px] text-muted-foreground/50 sm:block">
