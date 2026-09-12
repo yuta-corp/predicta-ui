@@ -3,7 +3,7 @@
 import { useEffect, useReducer } from "react"
 import { LocateFixedIcon, MapPinned } from "lucide-react"
 import { toast } from "sonner"
-import { getLiveMap, subscribeLiveMap } from "@/components/map/city-map"
+import { getLiveMap, subscribeLiveMap } from "@/lib/map/map-registry"
 import { messageFromGeoError } from "@/lib/map/geolocation-messages"
 import { updateUserLocationSource } from "@/lib/map/user-location"
 import { TANA_CENTER } from "@/lib/geo"
