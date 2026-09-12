@@ -9,8 +9,7 @@
 import { NextResponse } from "next/server"
 import type { APIError, APIErrorCode, TrafficMeta } from "@/lib/types/traffic"
 
-const UPSTREAM_BASE =
-  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ""
+const UPSTREAM_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ""
 const API_KEY = process.env.API_KEY ?? ""
 
 const UPSTREAM_ERROR: Record<number, APIErrorCode> = {
@@ -21,7 +20,7 @@ const UPSTREAM_ERROR: Record<number, APIErrorCode> = {
   504: "upstream_error",
 }
 
-function jsonError(error: APIError): Response {
+export function jsonError(error: APIError): Response {
   return NextResponse.json({ error }, { status: error.status ?? 500 })
 }
 
@@ -36,16 +35,8 @@ function readTrafficMeta(res: Response): TrafficMeta {
   }
 }
 
-/**
- * Forwarde une requête vers l'upstream et renvoie une Response Next.js
- * avec une enveloppe uniforme `{ data, meta }` (métadonnées de fraîcheur
- * lues depuis les en-têtes X-Predicta-*).
- */
-export async function proxyJson(
-  path: string,
-  init: RequestInit = {},
-  timeoutMs = 15_000
-): Promise<Response> {
+/** Erreur de configuration (URL ou clé manquante), ou null si tout est prêt. */
+function configurationError(): Response | null {
   if (!UPSTREAM_BASE) {
     return jsonError({
       code: "not_configured",
@@ -60,24 +51,56 @@ export async function proxyJson(
       status: 500,
     })
   }
+  return null
+}
+
+/** Appelle l'upstream avec la clé API et le bon Accept. */
+function fetchUpstream(
+  path: string,
+  init: RequestInit,
+  signal: AbortSignal
+): Promise<Response> {
+  return fetch(`${UPSTREAM_BASE}${path}`, {
+    ...init,
+    headers: {
+      "X-API-Key": API_KEY,
+      // L'upstream ne sert que application/geo+json sur les endpoints trafic :
+      // un Accept restrictif déclencherait un 406.
+      Accept: "application/geo+json, application/json, */*",
+      ...(init.headers ?? {}),
+    },
+    signal,
+    cache: "no-store",
+  })
+}
+
+/** Corps de la réponse : JSON si possible, texte brut sinon. */
+function parseBody(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+/**
+ * Forwarde une requête vers l'upstream et renvoie une Response Next.js avec une
+ * enveloppe uniforme `{ data, meta }` (fraîcheur lue depuis les en-têtes
+ * X-Predicta-*).
+ */
+export async function proxyJson(
+  path: string,
+  init: RequestInit = {},
+  timeoutMs = 15_000
+): Promise<Response> {
+  const configFailure = configurationError()
+  if (configFailure) return configFailure
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    const res = await fetch(`${UPSTREAM_BASE}${path}`, {
-      ...init,
-      headers: {
-        "X-API-Key": API_KEY,
-        // L'upstream ne sert que application/geo+json sur les endpoints
-        // trafic : un Accept restrictif déclencherait un 406.
-        Accept: "application/geo+json, application/json, */*",
-        ...(init.headers ?? {}),
-      },
-      signal: controller.signal,
-      cache: "no-store",
-    })
-
+    const res = await fetchUpstream(path, init, controller.signal)
     if (!res.ok) {
       return jsonError({
         code: UPSTREAM_ERROR[res.status] ?? "upstream_error",
@@ -85,16 +108,10 @@ export async function proxyJson(
         status: res.status,
       })
     }
-
-    const text = await res.text()
-    let data: unknown
-    try {
-      data = JSON.parse(text)
-    } catch {
-      data = text
-    }
-
-    return NextResponse.json({ data, meta: readTrafficMeta(res) })
+    return NextResponse.json({
+      data: parseBody(await res.text()),
+      meta: readTrafficMeta(res),
+    })
   } catch {
     if (controller.signal.aborted) {
       return jsonError({
@@ -128,5 +145,3 @@ export function isQuartierView(value: unknown): value is {
     Number.isFinite(v.lat)
   )
 }
-
-export { jsonError }
