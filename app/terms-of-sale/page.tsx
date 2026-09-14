@@ -11,8 +11,7 @@ export default function TermsOfSalePage() {
         <p>
           Predicta est actuellement en préproduction : aucune offre
           commerciale n'est en vente. Les conditions ci-dessous s'appliqueront
-          aux futures offres (abonnement API, accès privilégiés) dès leur
-          mise en ligne.
+          aux futures offres dès leur mise en ligne.
         </p>
       </Section>
       <Section title="Modalités">

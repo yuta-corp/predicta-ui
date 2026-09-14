@@ -7,10 +7,10 @@ const SECTIONS = [
     body: (
       <p>
         Predicta est un service d'information sur le trafic d'Antananarivo :
-        une carte vivante alimentée par l'API Predicta, une API destinée aux
-        développeurs, et des fonctionnalités sociales facultatives (amis,
-        partage de position, notifications). L'accès à la carte est libre et
-        gratuit ; les fonctionnalités sociales nécessitent un compte.
+        une carte vivante alimentée par l'API Predicta et des fonctionnalités
+        sociales (amis, partage de position, notifications). La consultation
+        de la carte et les fonctionnalités sociales nécessitent la création
+        d'un compte, dont l'inscription est gratuite.
       </p>
     ),
   },
@@ -55,18 +55,7 @@ const SECTIONS = [
     ),
   },
   {
-    title: "5. Utilisation des API",
-    body: (
-      <p>
-        Les accès à l'API sont régis par une clé par application. Toute
-        utilisation abusive, automatisée au-delà des usages raisonnables, ou
-        visant à contourner la sécurité est interdite. L'éditeur se réserve le
-        droit de révoquer un accès.
-      </p>
-    ),
-  },
-  {
-    title: "6. Contenus et comportement",
+    title: "5. Contenus et comportement",
     body: (
       <p>
         Il est interdit d'utiliser le service pour : harceler ou nuire à un
@@ -77,7 +66,7 @@ const SECTIONS = [
     ),
   },
   {
-    title: "7. Propriété intellectuelle",
+    title: "6. Propriété intellectuelle",
     body: (
       <p>
         L'interface, l'identité visuelle et la marque Predicta appartiennent à
@@ -87,7 +76,7 @@ const SECTIONS = [
     ),
   },
   {
-    title: "8. Responsabilité",
+    title: "7. Responsabilité",
     body: (
       <p>
         Le service est fourni « en l'état ». L'éditeur ne saurait être tenu
@@ -97,11 +86,11 @@ const SECTIONS = [
     ),
   },
   {
-    title: "9. Suspension et résiliation",
+    title: "8. Suspension et résiliation",
     body: (
       <p>
         En cas de manquement aux présentes conditions, l'éditeur peut
-        suspendre ou résilier l'accès d'un utilisateur ou d'une clé API, après
+        suspendre ou résilier l'accès d'un utilisateur, après
         avertissement lorsque cela est possible. La suppression d'un compte
         efface les données associées conformément à la{" "}
         <a className="underline decoration-primary/50 underline-offset-4" href="/privacy">
@@ -112,7 +101,7 @@ const SECTIONS = [
     ),
   },
   {
-    title: "10. Évolution des conditions",
+    title: "9. Évolution des conditions",
     body: (
       <p>
         Les présentes conditions peuvent évoluer ; la date de dernière mise à

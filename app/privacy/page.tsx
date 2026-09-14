@@ -32,22 +32,23 @@ const SECTIONS = [
       <>
         <p>
           <strong className="font-medium text-foreground">
-            Consultation de la carte (sans compte).
+            Consultation de la carte (sur compte).
           </strong>{" "}
           La carte affiche le trafic d'Antananarivo tel que fourni par l'API
-          Predicta (fond de carte OpenStreetMap, © OSM contributors). Aucun
-          compte n'est requis pour la consulter et la carte ne collecte pas
-          votre localisation. Si vous activez la géolocalisation du navigateur,
+          Predicta (fond de carte OpenStreetMap, © OSM contributors). Un
+          compte est requis pour la consulter ; la carte ne collecte pas votre
+          localisation. Si vous activez la géolocalisation du navigateur,
           votre position n'est traitée que sur votre appareil pour placer le
           repère sur la carte : elle n'est jamais transmise ni stockée par
           Predicta.
         </p>
         <p className="mt-3">
           <strong className="font-medium text-foreground">
-            Compte (facultatif).
+            Compte.
           </strong>{" "}
-          Les fonctionnalités sociales (amis, partage de position,
-          notifications) exigent un compte, géré par notre fournisseur
+          Un compte est requis pour consulter la carte ; il donne également
+          accès aux fonctionnalités sociales (amis, partage de position,
+          notifications). Il est géré par notre fournisseur
           d'authentification Clerk. Sont alors enregistrées : votre adresse
           électronique, votre prénom et nom (selon ce que vous fournissez),
           votre photo de profil et votre pseudo.

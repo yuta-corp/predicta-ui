@@ -11,12 +11,12 @@ const SECTIONS = [
   {
     href: "/terms",
     title: "Conditions d'utilisation",
-    text: "Les règles d'usage du service, de la carte vivante et de l'API.",
+    text: "Les règles d'usage du service et de la carte vivante.",
   },
   {
     href: "/terms-of-sale",
     title: "Conditions de vente",
-    text: "Les modalités commerciales des offres Predicta (API, abonnements).",
+    text: "Les modalités commerciales des offres Predicta.",
   },
   {
     href: "/cookies",
@@ -120,11 +120,11 @@ export default function LegalPage() {
         <p>
           Predicta est un service d&apos;information sur le trafic
           d&apos;Antananarivo : une carte vivante alimentée par l&apos;API
-          Predicta, une API destinée aux développeurs, et des fonctionnalités
-          sociales facultatives (amis, partage de position, notifications)
-          accessibles après création d&apos;un compte. L&apos;accès à la carte
-          est libre et gratuit. Les traitements de données personnelles liés à
-          ces fonctionnalités sont décrits dans la{" "}
+          Predicta et des fonctionnalités sociales (amis, partage de position,
+          notifications). La consultation de la carte nécessite la création
+          d&apos;un compte, dont l&apos;inscription est gratuite. Les
+          traitements de données personnelles liés à ces fonctionnalités sont
+          décrits dans la{" "}
           <Link href="/privacy" className="underline decoration-primary/50 underline-offset-4">
             politique de confidentialité
           </Link>
