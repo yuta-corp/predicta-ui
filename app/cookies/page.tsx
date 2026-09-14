@@ -6,17 +6,20 @@ import { OPEN_CONSENT_EVENT } from "@/components/consent/cookie-consent"
 const PURPOSES = [
   {
     name: "Essentiels",
-    description: "Nécessaires au fonctionnement du site (sécurité, session). Toujours actifs.",
+    description:
+      "Nécessaires au fonctionnement du site : cookies de session d'authentification (Clerk) lorsque vous êtes connecté, sécurité. Toujours actifs.",
     alwaysOn: true,
   },
   {
     name: "Préférences",
-    description: "Mémorisent vos choix d'affichage : thème, langue.",
+    description:
+      "Mémorisent vos choix d'affichage : thème, langue, consentement. Stockées localement sur votre appareil (localStorage).",
     alwaysOn: false,
   },
   {
     name: "Mesure d'audience",
-    description: "Statistiques anonymes de visite. Predicta n'en déploie pas à ce jour.",
+    description:
+      "Statistiques anonymes de visite (Vercel Analytics), établies sans dépôt de cookie.",
     alwaysOn: false,
   },
 ] as const
@@ -26,7 +29,7 @@ export default function CookiesPage() {
     <DocumentLayout
       eyebrow="Legal"
       title="Politique cookies"
-      intro="Predicta privilégie la sobriété : aucun cookie publicitaire, aucun traceur tiers. Les seuls dépôts possibles concernent vos préférences, stockées localement sur votre appareil."
+      intro="Dernière mise à jour : septembre 2026. Predicta privilégie la sobriété : aucun cookie publicitaire, aucun traceur publicitaire tiers. Seuls des cookies essentiels de session (authentification) et vos préférences stockées localement sur votre appareil sont utilisés. La mesure d'audience est anonyme et sans cookie."
     >
       <ul className="divide-y divide-border">
         {PURPOSES.map((p) => (

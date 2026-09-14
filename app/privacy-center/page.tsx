@@ -11,6 +11,11 @@ const ACTIONS = [
     action: "open-consent" as const,
   },
   {
+    title: "Export ou suppression de mes données",
+    text: "Recevoir une copie ou demander l'effacement des données liées à votre compte.",
+    href: "mailto:yuta-mg@proton.me?subject=Donn%C3%A9es%20personnelles",
+  },
+  {
     title: "Contact confidentialité",
     text: "Questions ou demandes relatives à vos données.",
     href: "mailto:yuta-mg@proton.me?subject=Confidentialit%C3%A9",
@@ -22,7 +27,7 @@ export default function PrivacyCenterPage() {
     <DocumentLayout
       eyebrow="Vos droits"
       title="Centre de confidentialité"
-      intro="Tout ce qui touche à vos données, au même endroit. Predicta ne stocke à ce jour aucune donnée personnelle : les actions ci-dessous couvrent vos préférences locales et vos demandes."
+      intro="Tout ce qui touche à vos données, au même endroit. Predicta enregistre uniquement les données que vous lui fournissez (compte, amis) ou que vous choisissez de partager (position pendant un partage actif) : voir la politique de confidentialité. Les actions ci-dessous couvrent vos préférences locales, vos demandes et la gestion de votre compte."
     >
       <ul className="divide-y divide-border">
         {ACTIONS.map((a) => (

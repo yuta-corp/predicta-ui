@@ -112,7 +112,7 @@ export default function LegalPage() {
     <DocumentLayout
       eyebrow="Mentions légales"
       title="Mentions légales"
-      intro="Les informations légales du service Predicta, conformément à la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN)."
+      intro="Dernière mise à jour : septembre 2026. Les informations légales du service Predicta, conformément à la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN)."
     >
       <LegalEntityTable />
 
@@ -120,8 +120,15 @@ export default function LegalPage() {
         <p>
           Predicta est un service d&apos;information sur le trafic
           d&apos;Antananarivo : une carte vivante alimentée par l&apos;API
-          Predicta, et une API destinée aux développeurs. L&apos;accès à la carte
-          est libre et gratuit.
+          Predicta, une API destinée aux développeurs, et des fonctionnalités
+          sociales facultatives (amis, partage de position, notifications)
+          accessibles après création d&apos;un compte. L&apos;accès à la carte
+          est libre et gratuit. Les traitements de données personnelles liés à
+          ces fonctionnalités sont décrits dans la{" "}
+          <Link href="/privacy" className="underline decoration-primary/50 underline-offset-4">
+            politique de confidentialité
+          </Link>
+          .
         </p>
       </Section>
       <Section title="2. Données cartographiques">

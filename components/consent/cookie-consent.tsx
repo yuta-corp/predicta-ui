@@ -174,9 +174,9 @@ function ConsentDialog(props: ConsentDialogProps) {
       <div className="animate-rise w-full max-w-xl rounded-lg border border-border bg-background/95 p-5 shadow-[0_24px_64px_rgba(30,40,20,0.2)] backdrop-blur-md">
         <h2 className="text-[14.5px] font-semibold tracking-tight">Vos préférences</h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-          Predicta utilise uniquement les cookies nécessaires au fonctionnement du
-          site (préférences, thème). Aucun cookie de suivi ou publicitaire n&apos;est
-          déposé.{" "}
+          Predicta utilise uniquement les cookies nécessaires au fonctionnement
+          du site (session d&apos;authentification, préférences, thème). Aucun
+          cookie de suivi ou publicitaire n&apos;est déposé.{" "}
           <Link
             href="/cookies"
             className="underline decoration-primary/50 underline-offset-4 hover:decoration-primary"

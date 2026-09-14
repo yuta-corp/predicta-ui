@@ -5,7 +5,7 @@ export default function TermsOfSalePage() {
     <DocumentLayout
       eyebrow="Legal"
       title="Conditions de vente"
-      intro="Dernière mise à jour : août 2026."
+      intro="Dernière mise à jour : septembre 2026."
     >
       <Section title="Offres">
         <p>
