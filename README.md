@@ -29,7 +29,6 @@ L'app est entièrement en français (`fr_MG`).
 
 ### Autres pages
 - **Landing** (`/`) : vitrine animée avec la carte en fond.
-- **Développeurs** (`/developers`) : documentation de l'API Predicta v1 + explorateur (`/developers/explorer`).
 - **Statut** (`/status`) : disponibilité des services de l'API en temps réel.
 - Pages légales : mentions légales, CGU, CGV (aucune offre commerciale à ce jour), confidentialité, centre de confidentialité, cookies (consentement des cookies avec catégories).
 
