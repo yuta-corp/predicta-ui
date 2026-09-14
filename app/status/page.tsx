@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-import { fetchQuartiers, fetchQuartierTraffic } from "@/lib/api/client"
 import { formatRelativeTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -14,7 +13,6 @@ interface Check {
   latencyMs?: number
 }
 
-const ANALAKELY_ID = "n_574547485"
 const REFRESH_MS = 30_000
 const TICK_MS = 1_000
 
@@ -30,7 +28,7 @@ const STATUS_CLASS: Record<Check["status"], string> = {
   error: "text-[#e08a70]",
 }
 
-/** Vérifie le ping, le catalogue de quartiers puis un trafic réel. */
+/** Vérifie le endpoint /ping de l'API. */
 async function runChecks(): Promise<Check[]> {
   const checks: Check[] = []
 
@@ -45,34 +43,6 @@ async function runChecks(): Promise<Check[]> {
     })
   } catch {
     checks.push({ name: "Health", status: "error", detail: "Injoignable" })
-  }
-
-  try {
-    const started = performance.now()
-    const quartiers = await fetchQuartiers("")
-    checks.push({
-      name: "Quartier API",
-      status: "ok",
-      detail: `${quartiers.length} quartiers indexés`,
-      latencyMs: Math.round(performance.now() - started),
-    })
-  } catch {
-    checks.push({ name: "Quartier API", status: "error", detail: "Indisponible" })
-  }
-
-  try {
-    const started = performance.now()
-    const { data, meta } = await fetchQuartierTraffic(ANALAKELY_ID)
-    const freshness =
-      meta.ageMs !== null ? `cache ${(meta.ageMs / 1000).toFixed(0)} s` : "live"
-    checks.push({
-      name: "Traffic API",
-      status: meta.partial || meta.fallback ? "degraded" : "ok",
-      detail: `${data.features.length} routes · ${freshness}${meta.partial ? " · partiel" : ""}${meta.fallback ? " · repli" : ""}`,
-      latencyMs: Math.round(performance.now() - started),
-    })
-  } catch {
-    checks.push({ name: "Traffic API", status: "error", detail: "Indisponible" })
   }
 
   return checks
