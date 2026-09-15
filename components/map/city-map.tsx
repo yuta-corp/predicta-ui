@@ -93,7 +93,6 @@ export function CityMap({
             sur .maplibregl-map) écrase les utilitaires Tailwind en cascade
             layers — on force le positionnement ici. */}
         <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
-        {/* Vignette douce pour la profondeur */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_60%,rgba(20,26,12,0.14)_100%)]" />
         {pulse && (
           <div

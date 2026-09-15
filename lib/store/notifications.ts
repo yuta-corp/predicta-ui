@@ -90,7 +90,6 @@ export function mergeRecentNotifications(
 ): NotificationEntry[] {
   const seen = new Set<string>()
   const merged: NotificationEntry[] = []
-  // Boucle bornée : on s'arrête dès la limite atteinte.
   for (const entry of [...incoming, ...existing]) {
     if (seen.has(entry.id)) continue
     seen.add(entry.id)
