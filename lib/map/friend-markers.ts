@@ -53,7 +53,6 @@ export function buildFriendAccuracyGeoJson(
   if (locations.length === 0) return EMPTY_FEATURES
 
   const features: AccuracyFeature[] = []
-  // Boucle bornée par MAX_FRIENDS_ON_MAP.
   const count = Math.min(locations.length, MAX_FRIENDS_ON_MAP)
   for (let index = 0; index < count; index += 1) {
     const location = locations[index]

@@ -28,9 +28,7 @@ const eslintConfig = defineConfig([
       "max-lines-per-function": "off",
     },
   },
-  // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",

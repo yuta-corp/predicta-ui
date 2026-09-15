@@ -15,5 +15,4 @@ export function initGsap() {
   initialized = true
 }
 
-/** Easing Predicta — cubic-bezier(.16,1,.3,1). */
 export const PREDICTA_EASE = "power3.out"

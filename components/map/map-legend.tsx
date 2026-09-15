@@ -54,7 +54,6 @@ export function MapLegend() {
         aria-expanded={expanded}
         aria-label="Légende du trafic"
       >
-        {/* Mini palette always visible */}
         <div className="flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#7fae3f] dark:bg-[#9fca69]" />
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#df9f3a] dark:bg-[#e0b25c]" />

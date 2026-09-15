@@ -54,7 +54,6 @@ export function syncFriendMarkers(
   if (!locations || locations.length === 0) return
 
   const now = Date.now()
-  // Boucle bornée : au plus MAX_FRIENDS_ON_MAP marqueurs.
   const count = Math.min(locations.length, MAX_FRIENDS_ON_MAP)
   for (let index = 0; index < count; index += 1) {
     const location = locations[index]

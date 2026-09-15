@@ -48,9 +48,6 @@ export function MapShell({ children }: { children: React.ReactNode }) {
     <main className="fixed inset-0 overflow-hidden bg-background text-foreground">
       <CityMap />
       <div className="pointer-events-none absolute inset-0 z-10">
-        {/* Barre haute : wordmark, navigation, recherche, statut.
-            Voile translucide + flou : la barre reste lisible sur la carte,
-            quels que soient le fond et le thème. */}
         <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 border-b border-border/50 bg-background/70 px-4 py-2.5 backdrop-blur-md sm:px-6">
           <div className="pointer-events-auto flex items-center gap-5">
             <Wordmark />
@@ -70,17 +67,14 @@ export function MapShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Légende trafic : palette colorée + signification, en haut à gauche. */}
         <div className="absolute left-4 top-20 z-20 sm:left-6">
           <MapLegend />
         </div>
 
-        {/* Panneau route sélectionnée (desktop : à droite, mobile : en bas) */}
         <div className="absolute bottom-24 right-4 z-20 sm:bottom-auto sm:right-6 sm:top-20 sm:bottom-auto">
           <RoutePanel />
         </div>
 
-        {/* Barre basse : fraîcheur, coordonnées, attribution, contrôles */}
         <footer className="pointer-events-auto absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 px-4 pb-3 sm:px-6 sm:pb-4">
           <div className="flex flex-col gap-1.5">
             <Freshness />
@@ -98,7 +92,6 @@ export function MapShell({ children }: { children: React.ReactNode }) {
           </div>
         </footer>
 
-        {/* Contenu de page (overlays) */}
         <div className="absolute inset-0">{children}</div>
       </div>
     </main>
