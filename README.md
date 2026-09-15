@@ -83,10 +83,10 @@ Stay in the loop, even when you're not looking.
 
 ## Privacy First
 
-- **Traffic data is never stored** — it's shown live and discarded
-- **Your location never leaves your device** unless you explicitly share it
+- **Traffic data is never stored** — it's shown live, then discarded
+- **Location is always opt-in** — you decide who sees you, and stopping sharing deletes your position
 - **Sharing is per-friend** — no broadcast, no public map of people
-- **Secret links expire** — your location is never permanently linkable
+- **Secret links expire after 24 h** — nothing stays linkable forever
 
 ---
 
