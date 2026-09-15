@@ -18,7 +18,7 @@
 
 <br/>
 
-![Predicta — the real-time traffic map of Antananarivo](public/og.png)
+![Predicta](public/og.png)
 
 <br/>
 
