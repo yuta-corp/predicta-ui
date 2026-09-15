@@ -1,6 +1,6 @@
 <div align="center">
 
-![Predicta](public/logo.svg)
+<img src="public/logo.svg" alt="Predicta" width="160" height="160" style="border-radius: 24px;" />
 
 <br/>
 
