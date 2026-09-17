@@ -16,10 +16,15 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
  * position partagée reçu par un ami le renvoyait ainsi sur l'accueil. On passe
  * l'URL courante en `returnBackUrl` pour revenir exactement là où il allait.
  */
+// Matchers regex : "/map(.*)" matche AUSSI /maplibre-gl-worker.mjs (le worker
+// MapLibre commence par "/map") et le redirige vers sign-in — le worker ne se
+// charge jamais, donc aucune tuile vecteur (basemap ni trafic) n'est dessinée.
+// On cible donc /map exactement (la route est "/map", la query ne compte pas
+// pour le pathname) et on garde les préfixes pour les routes à sous-routes.
 const isProtectedRoute = createRouteMatcher([
   "/friends(.*)",
-  "/map(.*)",
-  "/quartiers(.*)",
+  "/map",
+  "/quartiers",
   "/share(.*)",
 ])
 
@@ -34,7 +39,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|mjs|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
     "/__clerk/(.*)",
   ],
