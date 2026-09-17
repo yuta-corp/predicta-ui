@@ -8,8 +8,10 @@
 import {
   Map as MapLibreMap,
   NavigationControl,
+  type ErrorEvent,
   type GeoJSONSource,
   type MapMouseEvent,
+  type MapSourceDataEvent,
   type StyleSpecification,
 } from "maplibre-gl"
 
@@ -20,6 +22,7 @@ import {
   fallbackStyle,
   loadPredictaStyle,
 } from "@/lib/map/city-style"
+import { log, error as logError } from "@/lib/activity-log"
 import { TANA_CENTER, featureKey } from "@/lib/geo"
 import { quartiersByLowerName } from "@/lib/data/quartiers"
 import { clearLiveMap, setLiveMap } from "@/lib/map/map-registry"
@@ -77,10 +80,13 @@ function applyDeepLinks(): void {
 
 /** Charge le style fusionné, avec fond de secours si OpenFreeMap est injoignable. */
 async function resolveStyle(isDark: boolean) {
+  log("map", isDark ? "chargement du style (sombre)..." : "chargement du style (clair)...")
   try {
-    return await loadPredictaStyle(isDark)
+    const style = await loadPredictaStyle(isDark)
+    log("map", "style chargé (OpenFreeMap + routes prédicta)")
+    return style
   } catch (error) {
-    console.error("Basemap OpenFreeMap indisponible — fond de secours.", error)
+    logError("map", "Basemap OpenFreeMap indisponible — fond de secours.", error)
     return fallbackStyle(isDark)
   }
 }
@@ -151,10 +157,52 @@ function syncHover(
 
 /** Refresh périodique des tuiles (revalidation ETag → 304). */
 export function attachTileRefresh(map: MapLibreMap): () => void {
+  let count = 0
   const timer = setInterval(() => {
-    if (map.getSource("traffic")) map.refreshTiles("traffic")
+    if (!map.getSource("traffic")) return
+    count++
+    log("tile", `refreshTiles(source=traffic) n°${count} (ETag -> 304 attendu)`)
+    map.refreshTiles("traffic")
   }, TILE_REFRESH_MS)
   return () => clearInterval(timer)
+}
+
+/**
+ * Journal des tuiles de la source trafic : chargements (sourcedata) et échecs
+ * (AJAX/parse) à chaud, avec la coordonnée de tuile quand MapLibre la donne.
+ */
+function attachTileActivity(map: MapLibreMap): () => void {
+  const onSourceData = (event: MapSourceDataEvent) => {
+    if (event.sourceId !== "traffic") return
+    const coord = event.coord?.canonical
+    if (coord) {
+      log("tile", `tuile trafic ${event.type} ${coord.z}/${coord.x}/${coord.y}`)
+      return
+    }
+    if (event.sourceDataChanged || event.sourceDataType === "content") {
+      log("tile", `source trafic ${event.type} (${event.sourceDataType})`)
+    }
+  }
+  const onError = (event: ErrorEvent) => {
+    const sourceId = (event as ErrorEvent & { sourceId?: string }).sourceId
+    if (sourceId && sourceId !== "traffic") return
+    const tileId = (
+      event as { tile?: { tileID?: { canonical?: { z: number; x: number; y: number } } } }
+    ).tile?.tileID?.canonical
+    const where = tileId ? `${tileId.z}/${tileId.x}/${tileId.y}` : (sourceId ?? "carte")
+    const detail = event.error as { status?: number; message?: string } | null
+    logError(
+      "tile",
+      `échec ${where}: ${detail?.status ? `HTTP ${detail.status}` : detail?.message ?? "erreur"}`,
+      event
+    )
+  }
+  map.on("sourcedata", onSourceData)
+  map.on("error", onError)
+  return () => {
+    map.off("sourcedata", onSourceData)
+    map.off("error", onError)
+  }
 }
 
 /** Le basemap suit le clair/sombre du document (verrouillé si force*). */
@@ -389,6 +437,11 @@ function mountCityMap(
   style: StyleSpecification
 ): () => void {
   const map = createMapInstance(options.container, style, options.interactive)
+  log(
+    "map",
+    `carte créée (interactive=${options.interactive}, drift=${options.drift}), `
+      + `centre=${map.getCenter().lng.toFixed(4)},${map.getCenter().lat.toFixed(4)} zoom=${map.getZoom()}`
+  )
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
   setLiveMap(map)
   options.onMapCreated(map)
@@ -409,6 +462,7 @@ function mountCityMap(
     attachEngineBridge(map, reducedMotion, options.onPulse),
     attachTrafficInteractions(map, options.interactive),
     attachTileRefresh(map),
+    attachTileActivity(map),
   ]
 
   return () => {
