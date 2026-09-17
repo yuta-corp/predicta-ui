@@ -2,6 +2,7 @@ import {
   fetchQuartierTraffic,
   fetchZoneTraffic,
 } from "@/lib/api/client"
+import { log, error as logError, step } from "@/lib/activity-log"
 import type {
   Quartier,
   TrafficFeature,
@@ -131,6 +132,7 @@ class TrafficEngine {
 
   /** Sélectionne un quartier : recentrage + chargement de son trafic. */
   selectQuartier(q: Quartier) {
+    log("trafic", `selectQuartier: ${q.name} (${q.id})`)
     this.setState({
       activeQuartier: q,
       error: null,
@@ -152,8 +154,10 @@ class TrafficEngine {
     this.inFlight.add(key)
     this.setState({ busy: true, error: null })
     const startedAt = performance.now()
+    const done = step("trafic", `loadQuartier: ${q.name} (${q.id})`)
     try {
       const { data, meta } = await fetchQuartierTraffic(q.id)
+      done(`${data.features.length} features en ${Math.round(performance.now() - startedAt)} ms`)
       const update = this.store.upsert({
         key,
         tag: { kind: "quartier", id: q.id },
@@ -177,6 +181,11 @@ class TrafficEngine {
         },
       })
     } catch (error) {
+      done("échec")
+      logError(
+        "trafic",
+        `loadQuartier ${q.name}: ${error instanceof Error ? error.message : "échec inconnu"}`
+      )
       this.setState({
         busy: false,
         error: error instanceof Error ? error.message : "Chargement impossible.",
@@ -195,6 +204,7 @@ class TrafficEngine {
     const cell = gridCellKey(lon, lat)
     const quartier = nearestQuartier(lon, lat)
     const label = quartier ? quartier.name : `Point ${lon.toFixed(3)}, ${lat.toFixed(3)}`
+    log("trafic", `scanPoint: ${lon.toFixed(5)}, ${lat.toFixed(5)} (${label})`)
     this.setState({ scan: { id: ++this.scanId, lon, lat, label } })
 
     if (this.focusFromZoneCache(lon, lat, quartier)) return
@@ -204,9 +214,15 @@ class TrafficEngine {
     this.inFlight.add(key)
     this.setState({ busy: true, error: null })
     const startedAt = performance.now()
+    const done = step("trafic", `scanPoint -> loadZone: ${label}`)
     try {
-      await this.loadZone({ key, cell, lon, lat, quartier, label, startedAt })
+      await this.loadZone({ key, cell, lon, lat, quartier, label, startedAt, done })
     } catch (error) {
+      done("échec")
+      logError(
+        "trafic",
+        `loadZone ${label}: ${error instanceof Error ? error.message : "échec inconnu"}`
+      )
       this.setState({
         busy: false,
         error: error instanceof Error ? error.message : "Scan impossible.",
@@ -230,6 +246,11 @@ class TrafficEngine {
     const withinExtent = lon >= w && lon <= e && lat >= s && lat <= n
     const fresh = Date.now() - this.zoneCache.fetchedAt < ZONE_COOLDOWN_MS
     if (!withinExtent || !fresh) return false
+    log(
+      "cache",
+      `Zone en cache (fraîche ${Math.round((Date.now() - this.zoneCache.fetchedAt) / 1000)} s),`
+        + ` point dans l'étendue -> caméra recentrée sans requête`
+    )
     this.setState({
       activeQuartier: quartier,
       error: null,
@@ -247,10 +268,12 @@ class TrafficEngine {
     quartier: ReturnType<typeof nearestQuartier>
     label: string
     startedAt: number
+    done: (result?: string) => void
   }): Promise<void> {
-    const { key, cell, lon, lat, quartier, label, startedAt } = params
+    const { key, cell, lon, lat, quartier, label, startedAt, done } = params
     const zoneName = quartier ? quartier.name : label
     const { data, meta } = await fetchZoneTraffic({ name: zoneName, lon, lat })
+    done(`${data.features.length} features en ${Math.round(performance.now() - startedAt)} ms`)
     const update = this.store.upsert({
       key,
       tag: { kind: "zone", cell },
@@ -291,6 +314,7 @@ class TrafficEngine {
    */
   async revealCity(): Promise<void> {
     if (this.state.cityReveal) return
+    log("trafic", "revealCity: neutralisé (ville rendue en tuiles MVT), 0 fetch GeoJSON")
     this.setState({ cityReveal: { loaded: 0, total: 0 } })
   }
 
@@ -401,8 +425,10 @@ class TrafficEngine {
     if (!active || this.swrInFlight || this.inFlight.size > 0) return
     if (Date.now() - (this.state.freshness?.fetchedAt ?? 0) < 15_000) return
     this.swrInFlight = true
+    log("trafic", `silentRefresh SWR: ${active.name} (${active.id})`)
     try {
       const { data, meta } = await fetchQuartierTraffic(active.id)
+      log("trafic", `silentRefresh SWR: ${active.name} -> ${data.features.length} features`)
       this.store.upsert({
         key: tagKey({ kind: "quartier", id: active.id }),
         tag: { kind: "quartier", id: active.id },
@@ -412,7 +438,11 @@ class TrafficEngine {
         fetchedAt: meta.fetchedAt,
       })
       this.setState({ freshness: freshnessFromMeta(meta, active.name) })
-    } catch {
+    } catch (error) {
+      logError(
+        "trafic",
+        `silentRefresh SWR ${active.name}: ${error instanceof Error ? error.message : "échec"}`
+      )
       // Refresh silencieux : on garde l'ancienne donnée, pas d'erreur affichée.
     } finally {
       this.swrInFlight = false
