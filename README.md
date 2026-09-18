@@ -96,10 +96,27 @@ Stay in the loop, even when you're not looking.
 git clone git@github.com:yuta-corp/predicta-ui.git
 cd predicta-ui
 pnpm install
-cp .env.example .env     # fill in your keys
+cp .env.example .env     # then fill in your keys (see below)
 pnpm db:migrate
 pnpm dev                 # → http://localhost:3000
 ```
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and fill in the values. Never commit real keys — `.env` is gitignored.
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Public site URL (sitemap, robots, Open Graph) |
+| `API_URL` | Predicta upstream API URL (server only) |
+| `API_KEY` | Registered app API key for the `/api/predicta/*` proxy (server only, never `NEXT_PUBLIC_`) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Clerk secret key |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Clerk webhook signing secret |
+| `DATABASE_URL` | PostgreSQL connection string (Neon, Supabase, RDS…) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | VAPID public key for Web Push (safe to expose) |
+| `VAPID_PRIVATE_KEY` | VAPID private key (never expose) |
+| `VAPID_SUBJECT` | VAPID contact, e.g. `mailto:contact@yoursite.mg` |
 
 ---
 
@@ -123,13 +140,16 @@ pnpm dev                 # → http://localhost:3000
 | Command | Description |
 | --- | --- |
 | `pnpm dev` | Development server with Turbopack |
+| `pnpm start` | Production server (after `pnpm build`) |
 | `pnpm build` | Production build (runs migrations first) |
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | TypeScript type-checking |
 | `pnpm test` | Vitest unit tests |
 | `pnpm format` | Prettier formatting |
+| `pnpm generate:quartiers` | Regenerate the quartiers dataset |
 | `pnpm db:generate` | Generate Prisma client |
 | `pnpm db:migrate` | Create a dev migration |
+| `pnpm db:push` | Push the schema without a migration |
 | `pnpm db:deploy` | Apply pending migrations |
 
 ---
